@@ -1,0 +1,16 @@
+{
+  "name": "mac",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @mac/web run dev",
+    "build:web": "npm --workspace @mac/web run build",
+    "lint:web": "npm --workspace @mac/web run lint",
+    "typecheck:web": "npm --workspace @mac/web run typecheck"
+  }
+}
+

@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@mac/ui": [
+        "packages/ui/src/index.ts"
+      ],
+      "@mac/ui/*": [
+        "packages/ui/src/*"
+      ],
+      "@mac/domain": [
+        "packages/domain/src/index.ts"
+      ],
+      "@mac/domain/*": [
+        "packages/domain/src/*"
+      ],
+      "@mac/charts": [
+        "packages/charts/src/index.ts"
+      ],
+      "@mac/charts/*": [
+        "packages/charts/src/*"
+      ],
+      "@mac/data": [
+        "packages/data/src/index.ts"
+      ],
+      "@mac/data/*": [
+        "packages/data/src/*"
+      ]
+    }
+  }
+}
+
