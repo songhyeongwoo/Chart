@@ -17,11 +17,11 @@ export interface SidebarProps {
 
 export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
   return (
-    <aside className="flex h-full min-h-[calc(100vh-2rem)] w-full flex-col rounded-lg border border-line-subtle bg-surface-1 p-4 shadow-soft">
+    <aside className="flex h-full min-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-line-subtle bg-surface-1 px-4 py-5 shadow-soft">
       <div className="mb-6 px-2">
-        <p className="text-xs uppercase tracking-[0.22em] text-ink-3">{title}</p>
+        <p className="text-caption uppercase tracking-[0.22em] text-ink-3">{title}</p>
       </div>
-      <nav className="space-y-1">
+      <nav className="space-y-1.5">
         {items.map((item) => (
           <a
             key={item.href}
@@ -29,8 +29,8 @@ export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
             className={cn(
               "block rounded-md border px-3 py-3 transition-all duration-200 ease-refined",
               item.active
-                ? "border-line-strong bg-surface-2 text-ink-1"
-                : "border-transparent text-ink-2 hover:border-line-subtle hover:bg-surface-2/60"
+                ? "border-line-accent bg-surface-2 text-ink-1 shadow-inset"
+                : "border-transparent text-ink-2 hover:border-line-subtle hover:bg-surface-2/70"
             )}
           >
             <div className="flex items-center justify-between gap-3">
@@ -41,7 +41,7 @@ export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
                 </span>
               ) : null}
             </div>
-            {item.caption ? <div className="mt-1 text-xs text-ink-3">{item.caption}</div> : null}
+            {item.caption ? <div className="mt-1 text-xs leading-5 text-ink-3">{item.caption}</div> : null}
           </a>
         ))}
       </nav>
@@ -49,3 +49,4 @@ export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
     </aside>
   );
 }
+

@@ -1,25 +1,36 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "tertiary" | "ghost";
+type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  size?: ButtonSize;
   leadingIcon?: ReactNode;
 }
 
-const variants: Record<ButtonVariant, string> = {
+const variantClassName: Record<ButtonVariant, string> = {
   primary:
-    "bg-accent text-white border border-transparent hover:bg-accent-strong shadow-soft",
+    "border border-transparent bg-accent text-ink-inverse hover:bg-accent-strong focus-visible:ring-accent-soft",
   secondary:
-    "bg-surface-1 text-ink-1 border border-line-subtle hover:border-line-strong",
+    "border border-line-strong bg-surface-1 text-ink-1 hover:bg-surface-2 focus-visible:ring-accent-soft",
+  tertiary:
+    "border border-line-subtle bg-surface-2 text-ink-1 hover:border-line-strong hover:bg-surface-1 focus-visible:ring-accent-soft",
   ghost:
-    "bg-transparent text-ink-2 border border-transparent hover:bg-surface-2"
+    "border border-transparent bg-transparent text-ink-2 hover:bg-surface-2 hover:text-ink-1 focus-visible:ring-accent-soft"
+};
+
+const sizeClassName: Record<ButtonSize, string> = {
+  sm: "h-9 px-3.5 text-sm",
+  md: "h-11 px-4 text-sm",
+  lg: "h-12 px-5 text-sm"
 };
 
 export function Button({
   className,
   variant = "primary",
+  size = "md",
   leadingIcon,
   children,
   ...props
@@ -27,8 +38,10 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-all duration-200 ease-refined focus:outline-none focus:ring-2 focus:ring-accent-soft disabled:cursor-not-allowed disabled:opacity-60",
-        variants[variant],
+        "inline-flex items-center justify-center gap-2 rounded-sm font-medium transition-all duration-200 ease-refined focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45",
+        "shadow-inset",
+        variantClassName[variant],
+        sizeClassName[size],
         className
       )}
       {...props}

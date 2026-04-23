@@ -6,28 +6,28 @@ import { usePathname } from "next/navigation";
 function getTitle(pathname: string) {
   if (pathname.includes("/editor")) {
     return {
-      title: "Editor workspace",
-      subtitle: "Desktop-first chart editing shell with project rail, preview canvas, and inspector."
+      title: "Primary visualization workspace",
+      subtitle: "A desktop-first editing surface with a restrained command bar, project rail, preview canvas, and inspector."
     };
   }
 
   if (pathname.includes("/upload")) {
     return {
-      title: "Upload flow",
-      subtitle: "Structured intake step for CSV/XLSX before the editor session is hydrated."
+      title: "Dataset intake",
+      subtitle: "A trusted upload step that previews structure and preserves the handoff into the editor."
     };
   }
 
   if (pathname === "/app/projects/new") {
     return {
-      title: "New project",
-      subtitle: "Primary entry route into the upload-first creation flow."
+      title: "New project setup",
+      subtitle: "A lightweight staging step before upload creates the first project context."
     };
   }
 
   return {
     title: "Project hub",
-    subtitle: "Recent projects, create-project CTA, and re-entry patterns inside the shared app shell."
+    subtitle: "Recent work, clear re-entry, and a visible path into the next project."
   };
 }
 
@@ -40,13 +40,14 @@ export function AppTopBar() {
       title={copy.title}
       subtitle={copy.subtitle}
       actions={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <StatusBadge label="Magic link planned" tone="private" />
-          <StatusBadge label="Manual save only" tone="draft" />
-          <Button variant="secondary">Design system</Button>
-        </div>
+        <>
+          <StatusBadge label="Magic link planned" tone="neutral" />
+          <StatusBadge label="Manual save only" tone="draft" withDot />
+          <Button variant="tertiary" size="sm">
+            UI system
+          </Button>
+        </>
       }
     />
   );
 }
-

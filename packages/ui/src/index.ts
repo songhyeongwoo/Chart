@@ -1,4 +1,10 @@
+export * from "./components/compositions/metric-strip";
+export * from "./components/compositions/placeholder-chart";
+export * from "./components/compositions/preview-table";
+export * from "./components/compositions/section-header";
 export * from "./components/feedback/empty-state";
+export * from "./components/feedback/loading-state";
+export * from "./components/feedback/state-dot";
 export * from "./components/feedback/status-badge";
 export * from "./components/navigation/page-header";
 export * from "./components/navigation/sidebar";
@@ -12,4 +18,3 @@ export * from "./components/shells/public-shell";
 export * from "./components/shells/right-inspector-shell";
 export * from "./lib/cn";
 export * from "./tokens";
-

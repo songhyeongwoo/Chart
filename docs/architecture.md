@@ -58,6 +58,7 @@ docs/
   product-spec.md
   roadmap.md
   architecture.md
+  design-system.md
 ```
 
 ## Package Responsibilities
@@ -72,6 +73,7 @@ docs/
 - Owns reusable product primitives and layout shells
 - Exposes the shared visual language used by public and authenticated routes
 - Defines token objects that mirror the CSS custom properties used by the web app
+- Is organized as `primitives`, `compositions`, `feedback`, `navigation`, and `shells`
 
 ### `packages/domain`
 - Owns product-level types, entity definitions, and resolved product defaults
@@ -115,6 +117,7 @@ This is an executable product demo shell, not a feature-complete app. The curren
 - active navigation state
 - refined placeholders for landing, login, projects, upload, and editor
 - mock data for project cards and editor hydration shape
+- a documented design system with token and component rules
 
 The following are still mocked:
 
@@ -138,12 +141,35 @@ The scaffold currently includes:
 - `RightInspectorShell`
 - `PageHeader`
 - `EmptyState`
+- `LoadingState`
 - `StatusBadge`
 - `Button`
 - `Input`
 - `Card`
+- `MetricStrip`
+- `PlaceholderChart`
+- `PreviewTable`
 
 These components are intentionally lightweight and placeholder-friendly. They exist to stabilize page composition, spacing rhythm, and product language before real business logic is added.
+
+## UI Package Structure
+
+```text
+packages/ui/src/components/
+  primitives/
+  compositions/
+  feedback/
+  navigation/
+  shells/
+```
+
+This separation is intentional:
+
+- `primitives` define the lowest-level reusable controls
+- `compositions` encode repeatable product patterns
+- `feedback` centralizes state design
+- `navigation` handles product framing pieces
+- `shells` define full-screen layout environments
 
 ## Design System Direction in Code
 

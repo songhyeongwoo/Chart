@@ -6,8 +6,8 @@
         "name": "next"
       }
     ],
-    "incremental": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "incremental": true
   },
   "include": [
     "next-env.d.ts",

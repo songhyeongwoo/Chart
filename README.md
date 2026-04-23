@@ -9,6 +9,7 @@ The repository now includes an executable monorepo scaffold for a refined, place
 - [Product Spec](/C:/Users/A/Documents/Playground/docs/product-spec.md)
 - [Roadmap](/C:/Users/A/Documents/Playground/docs/roadmap.md)
 - [Architecture](/C:/Users/A/Documents/Playground/docs/architecture.md)
+- [Design System](/C:/Users/A/Documents/Playground/docs/design-system.md)
 
 ## Run Locally
 
@@ -51,6 +52,7 @@ npm.cmd run build:web
 - landing, login, projects, upload, and editor demo pages
 - mock project data and editor session data
 - design-token-based creative SaaS UI baseline
+- reusable `primitives -> compositions -> shells` UI structure
 
 Not implemented yet:
 
@@ -59,6 +61,15 @@ Not implemented yet:
 - real upload processing
 - real chart rendering
 - real save behavior
+
+## UI System
+
+- `primitives`: button, card, input
+- `compositions`: section headers, metric strips, preview tables, chart placeholders
+- `feedback`: badges, empty states, loading states
+- `shells`: public, app, editor, inspector
+
+The goal is not to make pages merely decorative. The goal is to make every mocked surface already feel like a credible product state.
 
 ## Suggested Next Build Order
 
