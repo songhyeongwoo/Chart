@@ -14,9 +14,9 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantClassName: Record<CardVariant, string> = {
-  default: "rounded-xl border border-line-subtle bg-surface-1/96 shadow-soft",
-  subtle: "rounded-xl border border-line-subtle bg-surface-2/92 shadow-inset",
-  canvas: "rounded-xl border border-line-strong bg-surface-1 shadow-panel editor-glow",
+  default: "rounded-[28px] border border-line-subtle bg-surface-1/94 shadow-soft",
+  subtle: "rounded-[28px] border border-line-subtle bg-surface-2/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]",
+  canvas: "rounded-[30px] border border-line-strong bg-surface-1/98 shadow-panel editor-glow",
   ghost: "border border-transparent bg-transparent shadow-none"
 };
 
@@ -42,16 +42,16 @@ export function Card({
   return (
     <div className={cn(variantClassName[variant], className)} {...props}>
       {(title || description || headerActions) && (
-        <div className="flex items-start justify-between gap-4 border-b border-line-subtle/85 px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-line-subtle/80 px-6 py-5">
           <div>
-            {title ? <h3 className="text-[1.06rem] font-semibold tracking-[-0.028em] text-ink-1">{title}</h3> : null}
+            {title ? <h3 className="text-[1.06rem] font-semibold tracking-[-0.03em] text-ink-1">{title}</h3> : null}
             {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-2">{description}</p> : null}
           </div>
           {headerActions}
         </div>
       )}
       <div className={cn(bodyHasInset && paddingClassName[padding])}>{children}</div>
-      {footer ? <div className="border-t border-line-subtle/85 px-6 py-4">{footer}</div> : null}
+      {footer ? <div className="border-t border-line-subtle/80 px-6 py-4">{footer}</div> : null}
     </div>
   );
 }

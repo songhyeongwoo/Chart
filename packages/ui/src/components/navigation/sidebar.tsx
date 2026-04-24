@@ -17,9 +17,9 @@ export interface SidebarProps {
 
 export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
   return (
-    <aside className="flex h-full min-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-line-strong bg-surface-1/96 px-4 py-5 shadow-panel">
-      <div className="mb-6 border-b border-line-subtle/80 px-2 pb-4">
-        <p className="text-caption font-medium uppercase tracking-[0.24em] text-ink-3">{title}</p>
+    <aside className="workspace-void flex h-full min-h-[calc(100vh-2rem)] w-full flex-col rounded-[34px] border border-white/8 px-4 py-5 text-white shadow-[0_34px_90px_rgba(0,0,0,0.22)]">
+      <div className="mb-6 border-b border-white/8 px-2 pb-4">
+        <p className="text-caption font-medium uppercase tracking-[0.24em] text-white/42">{title}</p>
       </div>
       <nav className="space-y-2">
         {items.map((item) => (
@@ -27,21 +27,21 @@ export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
             key={item.href}
             href={item.href}
             className={cn(
-              "block rounded-lg border px-4 py-3.5 transition-all duration-200 ease-refined",
+              "block rounded-[22px] border px-4 py-3.5 transition-all duration-200 ease-refined",
               item.active
-                ? "border-line-accent bg-surface-2 text-ink-1 shadow-soft"
-                : "border-transparent text-ink-2 hover:border-line-subtle hover:bg-surface-2/70"
+                ? "border-white/22 bg-white/16 text-white shadow-[0_18px_34px_rgba(0,0,0,0.14)]"
+                : "border-white/8 bg-white/4 text-white/68 hover:border-white/16 hover:bg-white/8 hover:text-white"
             )}
           >
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm font-medium tracking-[-0.01em]">{item.label}</div>
               {item.badge ? (
-                <span className="rounded-full border border-line-subtle bg-surface-1/88 px-2.5 py-0.5 text-[10px] tracking-[0.08em] text-ink-3">
+                <span className="rounded-full border border-white/10 bg-white/8 px-2.5 py-0.5 text-[10px] tracking-[0.08em] text-white/62">
                   {item.badge}
                 </span>
               ) : null}
             </div>
-            {item.caption ? <div className="mt-1 text-xs leading-5 text-ink-3">{item.caption}</div> : null}
+            {item.caption ? <div className="mt-1 text-xs leading-5 text-white/46">{item.caption}</div> : null}
           </a>
         ))}
       </nav>

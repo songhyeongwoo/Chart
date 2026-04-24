@@ -1169,7 +1169,7 @@ function InspectorSection({
       title={title}
       description={description}
       headerActions={badge ? <StatusBadge label={badge} tone="neutral" /> : null}
-      className="rounded-[22px]"
+      className="rounded-[24px] border-line-strong/70 bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(240,234,226,0.94))]"
     >
       <div className="space-y-3.5">{children}</div>
     </Card>
@@ -1186,7 +1186,7 @@ function ControlGroup({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-line-subtle bg-surface-1/96 px-4 py-4">
+    <div className="rounded-[22px] border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,247,0.98),rgba(243,237,229,0.92))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)]">
       <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{title}</p>
       <p className="mt-1.5 text-[13px] leading-6 text-ink-2">{description}</p>
       <div className="mt-4 space-y-3">{children}</div>
@@ -1255,7 +1255,7 @@ function SegmentedField<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
+    <div className="rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4">
       <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {options.map((option) => (
@@ -1265,8 +1265,8 @@ function SegmentedField<T extends string>({
             onClick={() => onChange(option.value)}
             className={
               value === option.value
-                ? "rounded-full border border-line-accent bg-surface-2 px-3 py-1 text-[11px] font-medium tracking-[0.08em] text-ink-1"
-                : "rounded-full border border-line-subtle bg-surface-1 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
+                ? "rounded-full border border-line-accent bg-accent px-3.5 py-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-inverse shadow-soft"
+                : "rounded-full border border-line-subtle bg-surface-1 px-3.5 py-1.5 text-[11px] tracking-[0.08em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
             }
           >
             {option.label}
@@ -1292,13 +1292,13 @@ function ToggleField({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4 text-left transition hover:border-line-strong"
+      className="flex w-full items-center justify-between gap-4 rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4 text-left transition hover:border-line-strong"
     >
       <div>
         <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
         <p className="mt-1 text-[13px] leading-6 text-ink-2">{description}</p>
       </div>
-      <span className={checked ? "relative inline-flex h-7 w-12 rounded-full bg-accent" : "relative inline-flex h-7 w-12 rounded-full bg-surface-3"}>
+      <span className={checked ? "relative inline-flex h-7 w-12 rounded-full bg-accent shadow-soft" : "relative inline-flex h-7 w-12 rounded-full bg-surface-3"}>
         <span
           className={
             checked
@@ -1325,7 +1325,7 @@ function RangeField({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
+    <div className="rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
         <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-2">{value}개</span>
@@ -1389,7 +1389,7 @@ function SelectField({
   required?: boolean;
 }) {
   return (
-    <label className="block rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
+    <label className="block rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</span>
         <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3">
@@ -2627,10 +2627,10 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
 
   return (
     <EditorShell
-      topBar={
+topBar={
         <TopBar
           title={mockEditorSession.project.name}
-          subtitle={`${projectId} · 업로드에서 감지한 열 구조를 이어 받아, 추천 초안을 실제 발표용 결과물로 다듬는 편집 공간입니다.`}
+          subtitle={`${projectId} · 추천 초안을 바탕으로 제목, 라벨, 축, 범례, 색상, 레이아웃을 실제 발표용 결과물 톤으로 다듬는 작업 공간입니다.`}
           actions={
             <>
               <StatusBadge label="비공개 프로젝트" tone="private" />
@@ -2641,28 +2641,40 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 변경 취소
               </Button>
               <Button onClick={handleSave}>로컬 저장</Button>
+              <Button variant="secondary">미리보기</Button>
+              <Button variant="secondary">PNG · SVG · MP4</Button>
             </>
           }
         />
       }
       rail={
         <>
-          <Card variant="canvas" title="편집 흐름" description="업로드에서 넘어온 맥락과 에디터 작업 리듬을 한 번에 읽게 만듭니다.">
+          <Card
+            variant="canvas"
+            className="workspace-shell"
+            title="작업 흐름"
+            description="왼쪽 rail은 설명 카드가 아니라 지금 어디까지 왔는지 바로 읽히는 짧은 작업 맥락으로 구성합니다."
+          >
             <div className="space-y-3">
-              <FlowStep index={1} title="차트 선택" description="데이터에 맞는 차트 유형을 고르고 바꿔봅니다." complete />
-              <FlowStep index={2} title="데이터 연결" description="어떤 열을 기준, 값, 범례로 쓸지 정합니다." active />
-              <FlowStep index={3} title="스타일 조정" description="텍스트, 범례, 라벨, 밀도, 비율을 다듬습니다." />
-              <FlowStep index={4} title="결과 확인" description="보고서와 발표에 바로 쓸 수 있는 품질인지 점검합니다." />
+              <FlowStep index={1} title="차트 선택" description="라인, 막대, 도넛, racing bar를 바로 전환합니다." complete />
+              <FlowStep index={2} title="데이터 연결" description="어떤 열을 기준값, 수치값, 범례로 읽을지 정합니다." active />
+              <FlowStep index={3} title="세부 조정" description="텍스트, 라벨, 축, 범례, 밀도와 비율을 다듬습니다." />
+              <FlowStep index={4} title="결과 확인" description="보고서와 발표 슬라이드에 넣을 톤인지 최종 점검합니다." />
             </div>
           </Card>
 
-          <Card variant="subtle" title="업로드에서 받은 데이터" description="에디터 안에서도 데이터 맥락이 사라지지 않도록 조용하게 유지합니다.">
+          <Card
+            variant="subtle"
+            className="workspace-shell"
+            title="데이터 맥락"
+            description="에디터 안에서도 업로드에서 넘어온 열 역할과 데이터 성격이 계속 보여야 합니다."
+          >
             <div className="space-y-3">
               {preview.columns.map((column) => (
-                <div key={column.key} className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
+                <div key={column.key} className="rounded-[20px] border border-line-subtle bg-surface-1/94 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-ink-1">{column.name}</p>
-                    <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3">{column.type}</span>
+                    <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1.5 text-[11px] tracking-[0.08em] text-ink-3">{column.type}</span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-ink-2">{getFieldRoleDescription(column)}</p>
                 </div>
@@ -2670,7 +2682,12 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
           </Card>
 
-          <Card variant="default" title="차트 유형" description="차트별로 inspector 언어와 결과물의 읽기 방식이 함께 바뀝니다.">
+          <Card
+            variant="default"
+            className="workspace-shell"
+            title="차트 유형"
+            description="차트별로 inspector 언어와 결과물의 읽기 방식이 함께 바뀌도록 구조를 묶었습니다."
+          >
             <div className="space-y-2">
               {chartCatalog.map((option) => (
                 <button
@@ -2679,23 +2696,27 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                   onClick={() => handleChartChange(option.value)}
                   className={
                     option.value === draft.chartType
-                      ? "w-full rounded-2xl border border-line-accent bg-surface-2 px-4 py-3.5 text-left shadow-soft"
-                      : "w-full rounded-2xl border border-line-subtle bg-surface-1 px-4 py-3.5 text-left transition hover:border-line-strong"
+                      ? "w-full rounded-[22px] border border-line-accent bg-accent px-4 py-4 text-left text-ink-inverse shadow-soft"
+                      : "w-full rounded-[22px] border border-line-subtle bg-surface-1/92 px-4 py-4 text-left transition hover:border-line-strong"
                   }
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-ink-1">{option.label}</div>
+                    <div className={option.value === draft.chartType ? "text-sm font-medium text-ink-inverse" : "text-sm font-medium text-ink-1"}>
+                      {option.label}
+                    </div>
                     <span
                       className={
                         option.value === draft.chartType
-                          ? "rounded-full border border-line-accent bg-surface-1 px-3 py-1 text-[11px] font-medium tracking-[0.08em] text-ink-1"
-                          : "rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3"
+                          ? "rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-inverse"
+                          : "rounded-full border border-line-subtle bg-surface-2 px-3 py-1.5 text-[11px] tracking-[0.08em] text-ink-3"
                       }
                     >
                       {option.badge}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-ink-3">{option.description}</p>
+                  <p className={option.value === draft.chartType ? "mt-2 text-xs leading-5 text-ink-inverse/72" : "mt-2 text-xs leading-5 text-ink-3"}>
+                    {option.description}
+                  </p>
                 </button>
               ))}
             </div>
@@ -2705,29 +2726,35 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
         </>
       }
       canvas={
-        <Card variant="canvas" title="발표용 미리보기 캔버스" description="필드 선택과 옵션 변경이 중앙 결과물과 설명 문구에 즉시 반영됩니다.">
-          <div className={`editor-stage rounded-[28px] border border-line-strong/85 ${density.shell}`}>
+        <Card
+          variant="canvas"
+          className="workspace-shell"
+          title="차트 캔버스"
+          description="중앙 화면은 결과물의 가치가 가장 먼저 보이도록 주변 패널보다 더 밝고 더 정교하게 설계합니다."
+        >
+          <div className={`workspace-shell rounded-[30px] border border-line-strong/85 ${density.shell}`}>
             <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
               <div>
                 <p className="text-caption uppercase tracking-[0.18em] text-ink-3">Presentation Canvas</p>
-                <h3 className="mt-2 text-title-2 font-semibold tracking-[-0.03em] text-ink-1">{draft.text.title}</h3>
+                <h3 className="mt-2 text-[1.72rem] font-semibold tracking-[-0.045em] text-ink-1">{draft.text.title}</h3>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-2">{recommendationCopy}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge label={chartDefinition.label} tone="live" />
                 <StatusBadge label={getChartToneText(draft.chartType)} tone="neutral" />
                 <StatusBadge label={`${draft.layout.aspectRatio} 캔버스`} tone="neutral" />
+                <StatusBadge label="내보내기 확장 준비" tone="neutral" />
               </div>
             </div>
 
             <div
               data-preview-tooltip-boundary
-              className={`chart-paper sheen-border mt-6 rounded-[28px] border border-line-strong shadow-panel ${density.canvas}`}
+              className={`chart-paper sheen-border mt-6 rounded-[30px] border border-line-strong shadow-panel ${density.canvas}`}
             >
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-subtle bg-surface-1/88 px-4 py-3">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-line-subtle bg-surface-1/88 px-4 py-3">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Canvas mode</p>
-                  <p className="mt-1 text-sm font-medium text-ink-1">문서에 바로 옮길 수 있는 결과물 중심 프리뷰</p>
+                  <p className="mt-1 text-sm font-medium text-ink-1">문서와 슬라이드에 바로 옮길 수 있는 결과물 중심 프리뷰</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge label={theme.label} tone="neutral" />
@@ -2738,7 +2765,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
               <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
                 <div>
                   <p className="text-caption uppercase tracking-[0.16em] text-ink-3">Chart Output</p>
-                  <h4 className="mt-2 text-[1.55rem] font-semibold tracking-[-0.04em] text-ink-1">{draft.text.title}</h4>
+                  <h4 className="mt-2 text-[1.65rem] font-semibold tracking-[-0.045em] text-ink-1">{draft.text.title}</h4>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-2">{draft.text.subtitle}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -2824,12 +2851,12 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 </div>
               ) : null}
 
-              <div className="mt-5 rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+              <div className="mt-5 rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-4">
                 <p className="text-sm leading-6 text-ink-2">{draft.text.caption}</p>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-3">
+                <div className="rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">데이터 연결</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {`${getFieldLabel(preview, draft.bindings.xFieldKey)} -> ${getFieldLabel(preview, draft.bindings.valueFieldKey)}`}
@@ -2838,11 +2865,11 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                     범례 {getFieldLabel(preview, draft.bindings.seriesFieldKey)} · 라벨 {getFieldLabel(preview, draft.bindings.labelFieldKey)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-3">
+                <div className="rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">추천 문구 기준</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">{recommendationCopy}</p>
                 </div>
-                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-3">
+                <div className="rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">레이아웃</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {draft.layout.aspectRatio} · {draft.layout.density === "compact" ? "촘촘하게" : draft.layout.density === "comfortable" ? "넉넉하게" : "기본"}
