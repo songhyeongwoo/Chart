@@ -25,11 +25,13 @@ export interface DerivedCartesianSeries {
 
 export interface DerivedCategoricalItem {
   label: string;
+  displayLabel: string;
   value: number;
 }
 
 export interface DerivedChartData {
   categories: string[];
+  categoryLabels: string[];
   series: DerivedCartesianSeries[];
   items: DerivedCategoricalItem[];
   legendItems: string[];
@@ -280,6 +282,10 @@ function getLabelValue(value: string | number | boolean | null | undefined) {
   return String(value);
 }
 
+function getDisplayLabelValue(row: DatasetPreview["sampleRows"][number], labelFieldKey: string | null, fallbackFieldKey: string) {
+  return getLabelValue(row[labelFieldKey ?? fallbackFieldKey]);
+}
+
 function sortCategories<T extends { label: string; value: number }>(items: T[], sortMode: EditorSortMode) {
   const copy = [...items];
 
@@ -304,10 +310,15 @@ export function deriveChartData(
   const xFieldKey = bindings.xFieldKey ?? preview.columns[0]?.key ?? null;
   const valueFieldKey = bindings.valueFieldKey ?? getNumericFields(preview)[0]?.key ?? null;
   const seriesFieldKey = bindings.seriesFieldKey;
+  const labelFieldKey =
+    bindings.labelFieldKey && preview.columns.some((column) => column.key === bindings.labelFieldKey)
+      ? bindings.labelFieldKey
+      : xFieldKey;
 
   if (!xFieldKey || !valueFieldKey) {
     return {
       categories: [],
+      categoryLabels: [],
       series: [],
       items: [],
       legendItems: [],
@@ -317,16 +328,22 @@ export function deriveChartData(
 
   if (chartType === "donut" || chartType === "racing-bar") {
     const grouped = new Map<string, number>();
+    const displayLabels = new Map<string, string>();
 
     rows.forEach((row) => {
       const label = getLabelValue(row[xFieldKey]);
+      const displayLabel = getDisplayLabelValue(row, labelFieldKey, xFieldKey);
       const value = getNumericValue(row[valueFieldKey]);
       grouped.set(label, (grouped.get(label) ?? 0) + value);
+      if (!displayLabels.has(label)) {
+        displayLabels.set(label, displayLabel);
+      }
     });
 
     const items = sortCategories(
       Array.from(grouped.entries()).map(([label, value]) => ({
         label,
+        displayLabel: displayLabels.get(label) ?? label,
         value
       })),
       options.sortMode
@@ -334,6 +351,7 @@ export function deriveChartData(
 
     return {
       categories: items.map((item) => item.label),
+      categoryLabels: items.map((item) => item.displayLabel),
       series: [],
       items,
       legendItems: items.map((item) => item.label),
@@ -343,12 +361,14 @@ export function deriveChartData(
 
   const categoryOrder: string[] = [];
   const categorySeen = new Set<string>();
+  const categoryLabels = new Map<string, string>();
 
   rows.forEach((row) => {
     const category = getLabelValue(row[xFieldKey]);
     if (!categorySeen.has(category)) {
       categorySeen.add(category);
       categoryOrder.push(category);
+      categoryLabels.set(category, getDisplayLabelValue(row, labelFieldKey, xFieldKey));
     }
   });
 
@@ -399,6 +419,7 @@ export function deriveChartData(
 
   return {
     categories: visibleCategories,
+    categoryLabels: visibleCategories.map((category) => categoryLabels.get(category) ?? category),
     series,
     items: [],
     legendItems: hasSeries ? seriesKeys : [getFieldLabel(preview, valueFieldKey)],
