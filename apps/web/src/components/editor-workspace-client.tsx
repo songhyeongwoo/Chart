@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { mockEditorSession } from "../lib/mock-data";
 import {
   buildRecommendationCopy,
@@ -33,6 +33,8 @@ type LabelMode = "value" | "name" | "both" | "hidden";
 type LabelDensity = "minimal" | "balanced" | "detailed";
 type LabelNumberFormat = "number" | "compact" | "percent";
 type InspectorTab = "data" | "style" | "axes" | "legend" | "labels" | "layout";
+type TooltipAlign = "left" | "center" | "right";
+type TooltipPlacement = "top" | "bottom";
 
 interface EditorDraftState {
   chartType: EditorChartType;
@@ -172,6 +174,151 @@ function cloneDraft(draft: EditorDraftState) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("ko-KR").format(value);
+}
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function buildTooltipSummary({
+  eyebrow,
+  label,
+  value,
+  detail
+}: {
+  eyebrow?: string;
+  label: string;
+  value?: string;
+  detail?: string;
+}) {
+  return [eyebrow, label, value, detail].filter(Boolean).join(" · ");
+}
+
+function getVisibleTickIndexes(
+  totalCount: number,
+  density: LabelDensity,
+  chartType: "line" | "bar"
+) {
+  if (totalCount <= 0) {
+    return new Set<number>();
+  }
+
+  const targetCount =
+    density === "detailed" ? totalCount : density === "minimal" ? (chartType === "line" ? 3 : 4) : chartType === "line" ? 4 : 5;
+  const step = Math.max(1, Math.ceil(totalCount / Math.max(targetCount, 1)));
+  const indexes = new Set<number>();
+
+  for (let index = 0; index < totalCount; index += step) {
+    indexes.add(index);
+  }
+
+  indexes.add(totalCount - 1);
+  indexes.add(0);
+  return indexes;
+}
+
+function getTopValueIndexes(values: number[], limit: number) {
+  return new Set(
+    values
+      .map((value, index) => ({ index, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, Math.max(1, limit))
+      .map((item) => item.index)
+  );
+}
+
+function getLineLabelIndexes(values: number[], density: LabelDensity) {
+  if (values.length === 0) {
+    return new Set<number>();
+  }
+
+  const limit = getChartLabelLimit(density, values.length, "line");
+  const lastIndex = values.length - 1;
+  const maxValue = Math.max(...values, 1);
+  const minGap = density === "minimal" ? 2 : 1;
+  const candidates = values
+    .map((value, index) => {
+      const previous = values[index - 1] ?? value;
+      const next = values[index + 1] ?? value;
+      const volatility = Math.abs(value - previous) + Math.abs(next - value);
+      const edgeBoost = index === 0 || index === lastIndex ? maxValue * 0.45 : 0;
+      const turningPointBoost =
+        index > 0 && index < lastIndex && ((value >= previous && value >= next) || (value <= previous && value <= next))
+          ? maxValue * 0.35
+          : 0;
+
+      return {
+        index,
+        score: value + volatility * 0.8 + edgeBoost + turningPointBoost
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const selected = new Set<number>([lastIndex]);
+
+  for (const candidate of candidates) {
+    if (selected.size >= limit) {
+      break;
+    }
+
+    const farEnough = Array.from(selected).every((index) => Math.abs(index - candidate.index) >= minGap);
+    if (farEnough || candidate.index === lastIndex) {
+      selected.add(candidate.index);
+    }
+  }
+
+  if (selected.size < limit) {
+    candidates.slice(0, limit).forEach((candidate) => selected.add(candidate.index));
+  }
+
+  return selected;
+}
+
+function splitTooltipLine(value: string, maxChars: number) {
+  const normalized = value.trim();
+
+  if (normalized.length <= maxChars) {
+    return [normalized];
+  }
+
+  const segments: string[] = [];
+  let current = "";
+
+  normalized.split(/\s+/).forEach((word) => {
+    const candidate = current ? `${current} ${word}` : word;
+
+    if (candidate.length <= maxChars) {
+      current = candidate;
+      return;
+    }
+
+    if (current) {
+      segments.push(current);
+      current = "";
+    }
+
+    if (word.length <= maxChars) {
+      current = word;
+      return;
+    }
+
+    let remainder = word;
+    while (remainder.length > maxChars) {
+      segments.push(`${remainder.slice(0, maxChars - 1)}…`);
+      remainder = remainder.slice(maxChars - 1);
+    }
+    current = remainder;
+  });
+
+  if (current) {
+    segments.push(current);
+  }
+
+  return segments;
 }
 
 function truncateLabel(value: string, maxLength = 12) {
@@ -609,68 +756,169 @@ function PreviewTooltip({
   value,
   detail,
   align = "center",
-  children
+  children,
+  wrapperClassName,
+  triggerClassName
 }: {
   eyebrow?: string;
   label: string;
   value?: string;
   detail?: string;
-  align?: "left" | "center" | "right";
+  align?: TooltipAlign;
   children: ReactNode;
+  wrapperClassName?: string;
+  triggerClassName?: string;
 }) {
-  const alignClass =
-    align === "left"
-      ? "left-0"
-      : align === "right"
-        ? "right-0"
-        : "left-1/2 -translate-x-1/2";
+  const tooltipId = useId();
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const tooltipRef = useRef<HTMLSpanElement | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [position, setPosition] = useState<{
+    placement: TooltipPlacement;
+    style: CSSProperties;
+  }>({
+    placement: "top",
+    style: { transform: "translate(0px, -9999px)" }
+  });
+  const isOpen = hovered || focused;
+  const summary = buildTooltipSummary({ eyebrow, label, value, detail });
+
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current || !tooltipRef.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!triggerRef.current || !tooltipRef.current) {
+        return;
+      }
+
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const tooltipRect = tooltipRef.current.getBoundingClientRect();
+      const boundary =
+        (triggerRef.current.closest("[data-preview-tooltip-boundary]") as HTMLElement | null)?.getBoundingClientRect() ?? document.body.getBoundingClientRect();
+      const preferredX =
+        align === "left"
+          ? 0
+          : align === "right"
+            ? triggerRect.width - tooltipRect.width
+            : (triggerRect.width - tooltipRect.width) / 2;
+      const minX = boundary.left - triggerRect.left + 8;
+      const maxX = boundary.right - triggerRect.left - tooltipRect.width - 8;
+      const x = maxX >= minX ? clamp(preferredX, minX, maxX) : preferredX;
+      const preferBottom = triggerRect.top - boundary.top < tooltipRect.height + 20 && boundary.bottom - triggerRect.bottom > tooltipRect.height + 12;
+      const preferredY = preferBottom ? triggerRect.height + 10 : -tooltipRect.height - 10;
+      const minY = boundary.top - triggerRect.top + 8;
+      const maxY = boundary.bottom - triggerRect.top - tooltipRect.height - 8;
+      const y = maxY >= minY ? clamp(preferredY, minY, maxY) : preferredY;
+
+      setPosition({
+        placement: preferBottom ? "bottom" : "top",
+        style: {
+          transform: `translate(${Math.round(x)}px, ${Math.round(y)}px)`
+        }
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [align, detail, isOpen, label, value]);
 
   return (
-    <span className="group relative inline-flex min-w-0 max-w-full">
-      {children}
+    <span className={cx("relative inline-flex min-w-0 max-w-full align-middle", wrapperClassName)}>
       <span
-        className={`pointer-events-none absolute bottom-full z-30 mb-2 w-max min-w-[150px] max-w-[220px] rounded-lg border border-line-subtle bg-surface-1/95 px-3 py-2 text-left opacity-0 shadow-soft backdrop-blur transition duration-150 ease-refined group-hover:opacity-100 ${alignClass}`}
+        ref={triggerRef}
+        tabIndex={0}
+        aria-describedby={isOpen ? tooltipId : undefined}
+        aria-label={summary}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={(event: KeyboardEvent<HTMLSpanElement>) => {
+          if (event.key === "Escape") {
+            setHovered(false);
+            setFocused(false);
+            event.currentTarget.blur();
+          }
+        }}
+        className={cx(
+          "inline-flex min-w-0 max-w-full cursor-help rounded-sm outline-none transition focus-visible:ring-2 focus-visible:ring-accent-soft/60 focus-visible:ring-offset-2",
+          triggerClassName
+        )}
+      >
+        {children}
+      </span>
+      <span
+        id={tooltipId}
+        ref={tooltipRef}
+        role="tooltip"
+        aria-hidden={!isOpen}
+        className={cx(
+          "pointer-events-none absolute left-0 top-0 z-30 w-max min-w-[170px] max-w-[260px] rounded-lg border border-line-subtle bg-surface-1/95 px-3 py-2 text-left shadow-soft backdrop-blur transition duration-100 ease-refined",
+          position.placement === "bottom" ? "origin-top" : "origin-bottom",
+          isOpen ? "visible opacity-100" : "invisible opacity-0"
+        )}
+        style={position.style}
       >
         {eyebrow ? <span className="block text-[10px] uppercase tracking-[0.14em] text-ink-3">{eyebrow}</span> : null}
-        <span className="mt-0.5 block text-xs font-medium leading-5 text-ink-1">{label}</span>
-        {value ? <span className="mt-1 block text-xs leading-5 text-ink-2">{value}</span> : null}
-        {detail ? <span className="mt-1 block text-[11px] leading-4 text-ink-3">{detail}</span> : null}
+        <span className="mt-0.5 block whitespace-normal text-xs font-medium leading-5 text-ink-1">{label}</span>
+        {value ? <span className="mt-1 block whitespace-normal text-xs leading-5 text-ink-2">{value}</span> : null}
+        {detail ? <span className="mt-1 block whitespace-normal text-[11px] leading-4 text-ink-3">{detail}</span> : null}
       </span>
     </span>
   );
 }
 
 function SvgPointTooltip({
+  tooltipId,
   x,
   y,
   rows
 }: {
+  tooltipId: string;
   x: number;
   y: number;
   rows: string[];
 }) {
-  const maxLength = Math.max(...rows.map((row) => row.length), 8);
-  const width = Math.min(190, Math.max(92, maxLength * 6.5 + 24));
-  const height = rows.length * 16 + 18;
-  const xOffset = x < 130 ? 8 : x > 500 ? -width - 8 : -width / 2;
-  const yOffset = y < 78 ? 18 : -height - 16;
+  const wrappedRows = rows.flatMap((row, rowIndex) =>
+    splitTooltipLine(row, rowIndex === 0 ? 18 : 24).map((segment, segmentIndex) => ({
+      key: `${rowIndex}-${segmentIndex}`,
+      text: segment,
+      rowIndex
+    }))
+  );
+  const maxLength = Math.max(...wrappedRows.map((row) => row.text.length), 10);
+  const width = clamp(maxLength * 6.3 + 28, 120, 236);
+  const height = wrappedRows.length * 15 + 18;
+  const tooltipX = clamp(x - width / 2, 12, 620 - width - 12);
+  const preferBottom = y - height - 16 < 12 && 280 - y > height + 18;
+  const tooltipY = clamp(preferBottom ? y + 18 : y - height - 16, 12, 280 - height - 12);
 
   return (
     <g
-      className="pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-      transform={`translate(${x + xOffset} ${y + yOffset})`}
+      id={tooltipId}
+      role="tooltip"
+      className="pointer-events-none opacity-0 transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100"
+      transform={`translate(${tooltipX} ${tooltipY})`}
     >
       <rect width={width} height={height} rx="10" fill="rgba(255,252,248,0.98)" stroke="rgba(183,173,161,0.55)" />
-      {rows.map((row, index) => (
+      {wrappedRows.map((row, index) => (
         <text
-          key={`${row}-${index}`}
+          key={row.key}
           x="12"
-          y={18 + index * 16}
-          fontSize={index === 0 ? "11" : "10"}
-          fontWeight={index === 0 ? "600" : "400"}
-          fill={index === 0 ? "#3E3F44" : "#6F7077"}
+          y={18 + index * 15}
+          fontSize={row.rowIndex === 0 ? "11" : "10"}
+          fontWeight={row.rowIndex === 0 ? "600" : "400"}
+          fill={row.rowIndex === 0 ? "#3E3F44" : "#6F7077"}
         >
-          {truncateLabel(row, index === 0 ? 22 : 28)}
+          {row.text}
         </text>
       ))}
     </g>
@@ -725,16 +973,18 @@ function LineChart({
   const maxValue = Math.max(1, ...series.flatMap((item) => item.values));
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
-  const labelLimit = getChartLabelLimit(labels.density, categories.length, "line");
-  const highlightedIndexes = new Set<number>(
-    categories
-      .map((_, index) => ({
-        index,
-        value: series.reduce((sum, currentSeries) => sum + (currentSeries.values[index] ?? 0), 0)
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, labelLimit)
-      .map((item) => item.index)
+  const combinedValues = categories.map((_, index) => series.reduce((sum, currentSeries) => sum + (currentSeries.values[index] ?? 0), 0));
+  const highlightedIndexes = getLineLabelIndexes(combinedValues, labels.density);
+  const axisLabelIndexes = new Set([
+    ...getVisibleTickIndexes(categories.length, labels.density, "line"),
+    ...Array.from(highlightedIndexes)
+  ]);
+  const dominantSeriesByIndex = categories.map((_, categoryIndex) =>
+    series.reduce(
+      (bestIndex, currentSeries, seriesIndex) =>
+        (currentSeries.values[categoryIndex] ?? 0) > (series[bestIndex]?.values[categoryIndex] ?? 0) ? seriesIndex : bestIndex,
+      0
+    )
   );
 
   return (
@@ -772,21 +1022,49 @@ function LineChart({
                 const pointName = categoryLabels[pointIndex] ?? categories[pointIndex];
                 const pointValue = formatLabelValue(point.value, labels, totalValue);
                 const labelText = getLabelText(pointName, point.value, labels, totalValue);
+                const tooltipId = `line-point-tooltip-${seriesIndex}-${pointIndex}`;
+                const isLastPoint = pointIndex === points.length - 1;
+                const isDominantSeries = dominantSeriesByIndex[pointIndex] === seriesIndex;
                 const showPointLabel =
                   labels.mode !== "hidden" &&
-                  highlightedIndexes.has(pointIndex) &&
-                  (series.length === 1 || pointIndex === points.length - 1 || labels.density === "detailed");
+                  (isLastPoint || highlightedIndexes.has(pointIndex)) &&
+                  (series.length === 1 || isLastPoint || isDominantSeries || labels.density === "detailed");
+                const labelOffset =
+                  point.y < 86 ? 18 : series.length > 1 && !isLastPoint ? (seriesIndex % 2 === 0 ? -14 : 18) : -14;
 
                 return (
                   <g key={`${currentSeries.label}-${pointIndex}`} className="group">
-                    <circle cx={point.x} cy={point.y} r="6" fill="transparent" />
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="12"
+                      fill="transparent"
+                      tabIndex={0}
+                      aria-describedby={tooltipId}
+                      aria-label={buildTooltipSummary({
+                        eyebrow: pointName,
+                        label: currentSeries.label !== pointName ? `구분 ${currentSeries.label}` : "핵심 포인트",
+                        value: `값 ${pointValue}`,
+                        detail: "포커스하면 전체 라벨과 값을 확인할 수 있습니다."
+                      })}
+                    />
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="9"
+                      fill="transparent"
+                      stroke="rgba(132,92,70,0.28)"
+                      strokeWidth="2"
+                      className="opacity-0 transition-opacity duration-100 group-focus-within:opacity-100"
+                    />
                     <circle cx={point.x} cy={point.y} r="5" fill={colors[seriesIndex % colors.length]} />
                     {showPointLabel ? (
-                      <text x={point.x} y={point.y - 14} textAnchor="middle" fontSize="10.5" fill="#4C4D53">
+                      <text x={point.x} y={clamp(point.y + labelOffset, 20, 248)} textAnchor="middle" fontSize="10.5" fill="#4C4D53">
                         {truncateLabel(labelText, showName && showValue ? 18 : 12)}
                       </text>
                     ) : null}
                     <SvgPointTooltip
+                      tooltipId={tooltipId}
                       x={point.x}
                       y={point.y}
                       rows={[
@@ -804,9 +1082,14 @@ function LineChart({
         {categories.map((label, index) => {
           const x = (index / Math.max(categories.length - 1, 1)) * 540 + 34;
           return (
-            <text key={label} x={x} y="264" textAnchor="middle" fontSize="12" fill="#7A7B82">
-              {truncateLabel(showName ? (categoryLabels[index] ?? label) : label, 9)}
-            </text>
+            <g key={label}>
+              <line x1={x} x2={x} y1="240" y2="246" stroke="rgba(183,173,161,0.35)" />
+              {axisLabelIndexes.has(index) ? (
+                <text x={x} y="264" textAnchor="middle" fontSize="12" fill="#7A7B82">
+                  {truncateLabel(categoryLabels[index] ?? label, categories.length > 5 ? 8 : 10)}
+                </text>
+              ) : null}
+            </g>
           );
         })}
       </svg>
@@ -833,6 +1116,11 @@ function BarChart({
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, categories.length, "bar");
+  const categoryTotals = categories.map((_, categoryIndex) =>
+    series.reduce((sum, currentSeries) => sum + (currentSeries.values[categoryIndex] ?? 0), 0)
+  );
+  const priorityCategoryIndexes = getTopValueIndexes(categoryTotals, labelLimit);
+  const axisLabelIndexes = getVisibleTickIndexes(categories.length, labels.density, "bar");
   const dominantSeriesByCategory = categories.map((_, categoryIndex) =>
     series.reduce(
       (bestIndex, currentSeries, seriesIndex) =>
@@ -843,57 +1131,82 @@ function BarChart({
 
   return (
     <div className="grid h-full min-h-[260px] grid-cols-[repeat(auto-fit,minmax(0,1fr))] items-end gap-4 rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-5 pb-5 pt-10">
-      {categories.map((category, categoryIndex) => (
+      {categories.map((category, categoryIndex) => {
+        const axisLabel = categoryLabels[categoryIndex] ?? category;
+        const showAxisLabel = axisLabelIndexes.has(categoryIndex);
+
+        return (
         <div key={category} className="flex h-full flex-col justify-end">
           <div className="flex h-full items-end justify-center gap-2">
-            {series.map((currentSeries, seriesIndex) => (
+            {series.map((currentSeries, seriesIndex) => {
+              const currentValue = currentSeries.values[categoryIndex] ?? 0;
+              const barHeight = Math.max(18, (currentValue / maxValue) * 220);
+              const isPriorityCategory = priorityCategoryIndexes.has(categoryIndex);
+              const canHighlightBar =
+                labels.density === "detailed" || series.length === 1 || dominantSeriesByCategory[categoryIndex] === seriesIndex;
+              const shouldShowBarName = labels.mode !== "hidden" && showName && isPriorityCategory && canHighlightBar && (!showAxisLabel || series.length > 1);
+              const shouldShowBarValue =
+                labels.mode !== "hidden" &&
+                showValue &&
+                isPriorityCategory &&
+                canHighlightBar &&
+                (barHeight >= (shouldShowBarName ? 52 : 34) || labels.density === "detailed");
+
+              return (
               <div key={`${category}-${currentSeries.label}`} className="flex h-full w-full max-w-[46px] flex-col justify-end">
-                {labels.mode !== "hidden" &&
-                categoryIndex < labelLimit &&
-                (labels.density === "detailed" || series.length === 1 || dominantSeriesByCategory[categoryIndex] === seriesIndex) ? (
+                {shouldShowBarName || shouldShowBarValue ? (
                   <div className="mb-2 text-center text-[11px] leading-4 text-ink-2">
-                    {showName ? (
+                    {shouldShowBarName ? (
                       <PreviewTooltip
                         eyebrow="막대 라벨"
-                        label={categoryLabels[categoryIndex] ?? category}
-                        value={showValue ? formatLabelValue(currentSeries.values[categoryIndex] ?? 0, labels, totalValue) : undefined}
+                        label={axisLabel}
+                        value={showValue ? formatLabelValue(currentValue, labels, totalValue) : undefined}
                         detail={series.length > 1 ? currentSeries.label : "막대 끝에 표시되는 항목입니다."}
                       >
-                        <span className="block truncate font-medium text-ink-1">{truncateLabel(categoryLabels[categoryIndex] ?? category, 10)}</span>
+                        <span className="block truncate font-medium text-ink-1">{truncateLabel(axisLabel, 10)}</span>
                       </PreviewTooltip>
                     ) : null}
-                    {showValue ? (
+                    {shouldShowBarValue ? (
                       <PreviewTooltip
                         eyebrow="값"
-                        label={formatLabelValue(currentSeries.values[categoryIndex] ?? 0, labels, totalValue)}
-                        detail={categoryLabels[categoryIndex] ?? category}
+                        label={formatLabelValue(currentValue, labels, totalValue)}
+                        detail={axisLabel}
                       >
-                        <span className="block">{formatLabelValue(currentSeries.values[categoryIndex] ?? 0, labels, totalValue)}</span>
+                        <span className="block">{formatLabelValue(currentValue, labels, totalValue)}</span>
                       </PreviewTooltip>
                     ) : null}
                   </div>
                 ) : null}
-                <div
-                  className="rounded-t-md"
-                  style={{
-                    height: `${Math.max(18, ((currentSeries.values[categoryIndex] ?? 0) / maxValue) * 220)}px`,
-                    backgroundColor: colors[seriesIndex % colors.length]
-                  }}
-                />
+                <PreviewTooltip
+                  eyebrow={series.length > 1 ? currentSeries.label : "막대"}
+                  label={axisLabel}
+                  value={formatLabelValue(currentValue, labels, totalValue)}
+                  detail={series.length > 1 ? `${currentSeries.label} 기준 비교 막대` : "값 비교를 위한 막대입니다."}
+                  wrapperClassName="flex h-full w-full"
+                  triggerClassName="flex h-full w-full items-end rounded-t-md"
+                >
+                  <span
+                    className="block w-full rounded-t-md"
+                    style={{
+                      height: `${barHeight}px`,
+                      backgroundColor: colors[seriesIndex % colors.length]
+                    }}
+                  />
+                </PreviewTooltip>
               </div>
-            ))}
+            )})}
           </div>
-          <PreviewTooltip
-            eyebrow="축 라벨"
-            label={showName ? (categoryLabels[categoryIndex] ?? category) : category}
-            detail="가로축에서 항목을 구분합니다."
-          >
-            <span className="mt-3 block truncate text-center text-sm text-ink-2">
-              {truncateLabel(showName ? (categoryLabels[categoryIndex] ?? category) : category, 11)}
-            </span>
-          </PreviewTooltip>
+          {showAxisLabel ? (
+            <PreviewTooltip eyebrow="축 라벨" label={axisLabel} detail="가로축에서 항목을 구분합니다.">
+              <span className="mt-3 block truncate text-center text-sm text-ink-2">
+                {truncateLabel(axisLabel, categories.length > 5 ? 9 : 11)}
+              </span>
+            </PreviewTooltip>
+          ) : (
+            <span className="mt-3 block h-5" aria-hidden="true" />
+          )}
         </div>
-      ))}
+      )})}
     </div>
   );
 }
@@ -911,6 +1224,7 @@ function DonutChart({
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, items.length, "donut");
+  const priorityIndexes = getTopValueIndexes(items.map((item) => item.value), labelLimit);
   let current = 0;
   const segments = items.map((item, index) => {
     const percentage = (item.value / total) * 100;
@@ -935,8 +1249,18 @@ function DonutChart({
         </div>
       </div>
       <div className="grid gap-3">
-        {items.map((item, index) => (
-          <div key={item.label} className="rounded-md border border-line-subtle bg-surface-1 px-4 py-3">
+        {items.map((item, index) => {
+          const share = Math.round((item.value / total) * 100);
+          const isPriority = priorityIndexes.has(index) || share >= (labels.density === "minimal" ? 22 : 16);
+
+          return (
+          <div
+            key={item.label}
+            className={cx(
+              "rounded-md border border-line-subtle bg-surface-1 px-4 py-3",
+              isPriority ? "border-line-strong shadow-soft" : null
+            )}
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="size-2.5 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
@@ -944,7 +1268,7 @@ function DonutChart({
                   eyebrow="도넛 조각"
                   label={showName ? item.displayLabel : item.label}
                   value={formatLabelValue(item.value, labels, total)}
-                  detail={`${Math.round((item.value / total) * 100)}% 비중`}
+                  detail={`${share}% 비중`}
                   align="left"
                 >
                   <span className="max-w-[150px] truncate text-sm font-medium text-ink-1">
@@ -952,15 +1276,19 @@ function DonutChart({
                   </span>
                 </PreviewTooltip>
               </div>
-              {labels.mode !== "hidden" && index < labelLimit && showValue ? (
-                <span className="text-sm text-ink-2">{formatLabelValue(item.value, labels, total)}</span>
+              {labels.mode !== "hidden" && showValue && (isPriority || labels.density === "detailed") ? (
+                <span className={isPriority ? "text-sm font-medium text-ink-1" : "text-sm text-ink-2"}>
+                  {formatLabelValue(item.value, labels, total)}
+                </span>
               ) : null}
             </div>
-            {labels.mode !== "hidden" && index < labelLimit && showName && showValue ? (
-              <p className="mt-2 text-sm text-ink-2">{Math.round((item.value / total) * 100)}% · {formatNumber(item.value)}</p>
+            {labels.mode !== "hidden" && showName && showValue && isPriority ? (
+              <p className="mt-2 text-sm text-ink-2">{share}% · {formatNumber(item.value)}</p>
+            ) : labels.mode !== "hidden" && isPriority ? (
+              <p className="mt-2 text-[11px] leading-5 text-ink-3">{share}% 비중</p>
             ) : null}
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );
@@ -981,10 +1309,31 @@ function RacingBarChart({
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, items.length, "racing-bar");
+  const priorityIndexes = getTopValueIndexes(items.map((item) => item.value), labelLimit);
 
   return (
     <div className="grid h-full min-h-[260px] gap-4 rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-5 py-5">
-      {items.map((item, index) => (
+      {items.map((item, index) => {
+        const widthPercentage = Math.max(18, (item.value / maxValue) * 100);
+        const isPriority = priorityIndexes.has(index);
+        const showHeaderValue =
+          labels.mode !== "hidden" && showValue && (isPriority || widthPercentage < (showName && showValue ? 58 : 38));
+        const canFitDenseText = widthPercentage >= (showName && showValue ? 58 : showName ? 40 : 26);
+        const canFitCompactText = widthPercentage >= (showName && showValue ? 46 : showName ? 32 : 22);
+        const showInlineLabel =
+          labels.mode !== "hidden" &&
+          isPriority &&
+          (labels.density === "detailed" ? canFitCompactText : canFitDenseText);
+        const inlineText =
+          !showInlineLabel
+            ? ""
+            : showName && showValue
+              ? `${index + 1}위 · ${truncateLabel(showName ? item.displayLabel : item.label, 14)} · ${formatLabelValue(item.value, labels, totalValue)}`
+              : showName
+                ? `${index + 1}위 · ${truncateLabel(showName ? item.displayLabel : item.label, 18)}`
+                : `${index + 1}위 · ${formatLabelValue(item.value, labels, totalValue)}`;
+
+        return (
         <div key={item.label}>
           <div className="mb-2 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -1003,34 +1352,33 @@ function RacingBarChart({
                 </span>
               </PreviewTooltip>
             </div>
-            {labels.mode !== "hidden" && index < labelLimit && showValue ? (
+            {showHeaderValue ? (
               <span className="text-sm text-ink-2">{formatLabelValue(item.value, labels, totalValue)}</span>
             ) : null}
           </div>
           <div className="h-11 rounded-md bg-surface-2 p-1">
-            <div
-              className="group relative flex h-full min-w-0 items-center rounded-sm px-4 text-xs font-medium text-ink-inverse"
-              style={{
-                width: `${Math.max(18, (item.value / maxValue) * 100)}%`,
-                backgroundColor: colors[index % colors.length]
-              }}
+            <PreviewTooltip
+              eyebrow={`${index + 1}위`}
+              label={showName ? item.displayLabel : item.label}
+              value={formatLabelValue(item.value, labels, totalValue)}
+              detail={`${Math.round((item.value / Math.max(totalValue, 1)) * 100)}% 비중`}
+              align="left"
+              wrapperClassName="flex h-full"
+              triggerClassName="flex h-full min-w-0 items-center rounded-sm px-4 text-xs font-medium text-ink-inverse"
             >
-              {labels.mode === "hidden" || index >= labelLimit
-                ? ""
-                : showName && showValue
-                  ? `${index + 1}위 · ${truncateLabel(showName ? item.displayLabel : item.label, 16)} · ${formatLabelValue(item.value, labels, totalValue)}`
-                  : showName
-                    ? `${index + 1}위 · ${truncateLabel(showName ? item.displayLabel : item.label, 20)}`
-                    : `${index + 1}위 · ${formatLabelValue(item.value, labels, totalValue)}`}
-              <span className="pointer-events-none absolute bottom-full left-3 z-30 mb-2 min-w-[170px] max-w-[230px] rounded-lg border border-line-subtle bg-surface-1/95 px-3 py-2 text-left text-ink-1 opacity-0 shadow-soft backdrop-blur transition duration-150 ease-refined group-hover:opacity-100">
-                <span className="block text-[10px] uppercase tracking-[0.14em] text-ink-3">{index + 1}위</span>
-                <span className="mt-0.5 block text-xs font-medium leading-5">{showName ? item.displayLabel : item.label}</span>
-                <span className="mt-1 block text-xs leading-5 text-ink-2">{formatLabelValue(item.value, labels, totalValue)}</span>
+              <span
+                className="flex h-full min-w-0 items-center rounded-sm px-4 text-xs font-medium text-ink-inverse"
+                style={{
+                  width: `${widthPercentage}%`,
+                  backgroundColor: colors[index % colors.length]
+                }}
+              >
+                <span className="truncate">{inlineText}</span>
               </span>
-            </div>
+            </PreviewTooltip>
           </div>
         </div>
-      ))}
+      )})}
     </div>
   );
 }
@@ -1273,7 +1621,10 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
               </div>
             </div>
 
-            <div className={`mt-6 rounded-xl border border-line-strong bg-surface-1 shadow-soft ${density.canvas}`}>
+            <div
+              data-preview-tooltip-boundary
+              className={`mt-6 rounded-xl border border-line-strong bg-surface-1 shadow-soft ${density.canvas}`}
+            >
               <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
                 <div>
                   <p className="text-caption uppercase tracking-[0.16em] text-ink-3">시각화 제목</p>
