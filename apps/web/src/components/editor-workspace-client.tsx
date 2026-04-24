@@ -192,9 +192,13 @@ const initialDraft: EditorDraftState = {
   }
 };
 
-function getQaStateTopN(state: PreviewQaState) {
+function getQaStateTopN(chartType: EditorChartType, state: PreviewQaState) {
+  if (chartType === "line") {
+    return 4;
+  }
+
   if (state === "extreme") {
-    return 6;
+    return chartType === "bar" ? 4 : 5;
   }
 
   if (state === "sparse") {
@@ -414,6 +418,24 @@ function getTopValueIndexes(values: number[], limit: number) {
       .slice(0, Math.max(1, limit))
       .map((item) => item.index)
   );
+}
+
+function getPrioritySeriesIndexes(series: Array<{ values: number[] }>, limit: number) {
+  return new Set(
+    series
+      .map((item, index) => ({
+        index,
+        lastValue: item.values[item.values.length - 1] ?? 0,
+        maxValue: Math.max(...item.values, 0)
+      }))
+      .sort((a, b) => b.lastValue - a.lastValue || b.maxValue - a.maxValue)
+      .slice(0, Math.max(1, limit))
+      .map((item) => item.index)
+  );
+}
+
+function supportsExternalLegend(chartType: EditorChartType) {
+  return chartType === "line" || chartType === "bar";
 }
 
 function getLineLabelIndexes(values: number[], density: LabelDensity) {
@@ -719,7 +741,7 @@ function getPreviewStateCopy({
     if (chartType === "line") {
       return {
         state: "empty",
-        badge: "빈 데이터",
+        badge: "값 필요",
         title: "추세를 그릴 값이 아직 연결되지 않았습니다.",
         description: `${xLabel} 흐름은 보이지만 ${valueLabel} 값이 없어, 지금은 빈 상태를 먼저 또렷하게 안내합니다.`,
         detail: "값 열을 다시 고르거나 비어 있는 행을 정리하면 선과 축이 같은 자리에서 바로 복구됩니다.",
@@ -730,7 +752,7 @@ function getPreviewStateCopy({
     if (chartType === "bar") {
       return {
         state: "empty",
-        badge: "빈 데이터",
+        badge: "값 필요",
         title: "비교를 시작할 값이 아직 없습니다.",
         description: `${xLabel} 기준 항목은 있지만 ${valueLabel} 값이 비어 있어, 막대 대신 정돈된 안내 상태를 보여주고 있습니다.`,
         detail: "숫자 열이나 항목 기준을 다시 연결하면 비교 막대가 같은 레이아웃 안에서 바로 채워집니다.",
@@ -741,7 +763,7 @@ function getPreviewStateCopy({
     if (chartType === "donut") {
       return {
         state: "empty",
-        badge: "빈 데이터",
+        badge: "값 필요",
         title: "구성 비중을 계산할 값이 아직 없습니다.",
         description: `${xLabel} 항목은 있지만 ${valueLabel}가 비어 있어, 조각을 그리기보다 빈 구성을 먼저 안내하고 있습니다.`,
         detail: "값이 들어오면 조각, 범례, 비중 안내가 같은 톤으로 함께 채워집니다.",
@@ -751,7 +773,7 @@ function getPreviewStateCopy({
 
     return {
       state: "empty",
-      badge: "빈 데이터",
+      badge: "값 필요",
       title: "순위를 계산할 값이 아직 없습니다.",
       description: `${xLabel} 항목만 있고 ${valueLabel} 값이 없어, 막대 경주를 시작하지 않고 정돈된 대기 상태를 유지합니다.`,
       detail: "값이 들어오면 상위 순위와 막대 길이를 같은 기준으로 다시 계산합니다.",
@@ -763,7 +785,7 @@ function getPreviewStateCopy({
     if (chartType === "line") {
       return {
         state: "sparse",
-        badge: "희소 데이터",
+        badge: "데이터 적음",
         title: "포인트가 적어 흐름을 단정하기엔 이른 상태입니다.",
         description: "지금은 확인 가능한 구간만 또렷하게 두고, 축 눈금도 과하게 늘리지 않도록 정리했습니다.",
         detail: "기간 데이터가 더 쌓이면 추세선과 축 샘플링이 자동으로 자연스러운 밀도로 확장됩니다.",
@@ -774,7 +796,7 @@ function getPreviewStateCopy({
     if (chartType === "bar") {
       return {
         state: "sparse",
-        badge: "희소 데이터",
+        badge: "데이터 적음",
         title: "비교 가능한 항목이 아직 많지 않습니다.",
         description: "지금은 핵심 막대만 먼저 읽히도록 두고, 축과 라벨은 과장되지 않게 눌러두었습니다.",
         detail: "항목이 더 늘어나면 축 밀도와 범례 배치도 같은 제품 톤으로 함께 확장됩니다.",
@@ -785,7 +807,7 @@ function getPreviewStateCopy({
     if (chartType === "donut") {
       return {
         state: "sparse",
-        badge: "희소 데이터",
+        badge: "데이터 적음",
         title: "구성 항목이 적어 비중이 단순하게 보일 수 있습니다.",
         description: "현재는 큰 조각과 총합을 또렷하게 보여주고, 불필요한 장식은 줄였습니다.",
         detail: "구성 항목이 더 늘어나면 범례와 조각 강조도 밀도에 맞춰 자연스럽게 확장됩니다.",
@@ -795,7 +817,7 @@ function getPreviewStateCopy({
 
     return {
       state: "sparse",
-      badge: "희소 데이터",
+      badge: "데이터 적음",
       title: "순위를 읽기엔 항목 수가 아직 적습니다.",
       description: "지금은 상위 항목만 간결하게 보여주고, 막대 안 텍스트도 읽기 쉬운 수준으로 유지합니다.",
       detail: "순위 후보가 더 늘어나면 상위권 강조와 막대 폭 분배도 자동으로 조정됩니다.",
@@ -807,7 +829,7 @@ function getPreviewStateCopy({
     if (chartType === "line") {
       return {
         state: "extreme",
-        badge: "복잡한 데이터",
+        badge: "밀도 높음",
         title: "핵심 흐름이 먼저 읽히도록 축과 라벨을 눌러두었습니다.",
         description:
           hasTooManyItems
@@ -821,7 +843,7 @@ function getPreviewStateCopy({
     if (chartType === "bar") {
       return {
         state: "extreme",
-        badge: "복잡한 데이터",
+        badge: "밀도 높음",
         title: "비교 우선순위를 유지하도록 축과 범례를 압축했습니다.",
         description:
           hasTooManyItems
@@ -835,7 +857,7 @@ function getPreviewStateCopy({
     if (chartType === "donut") {
       return {
         state: "extreme",
-        badge: "복잡한 데이터",
+        badge: "밀도 높음",
         title: "비중 읽기가 흐트러지지 않도록 대표 항목 중심으로 정리했습니다.",
         description:
           hasTooManyItems
@@ -850,7 +872,7 @@ function getPreviewStateCopy({
 
     return {
       state: "extreme",
-      badge: "복잡한 데이터",
+      badge: "밀도 높음",
       title: "순위 읽기가 흐트러지지 않도록 상위 결과 중심으로 정리했습니다.",
       description:
         hasTooManyItems
@@ -863,10 +885,10 @@ function getPreviewStateCopy({
 
   return {
     state: "balanced",
-    badge: "데이터 균형",
-    title: "현재 미리보기는 안정적인 데이터 상태입니다.",
-    description: "축, 범례, 라벨을 과하게 압축하지 않고도 핵심 정보를 자연스럽게 읽을 수 있습니다.",
-    detail: "데이터 구조가 크게 바뀌면 빈 상태, 희소 상태, 복잡한 상태 규칙이 같은 톤으로 이어집니다.",
+    badge: "안정적",
+    title: "지금 상태는 바로 공유해도 읽기 흐름이 안정적입니다.",
+    description: "축, 범례, 라벨을 과하게 줄이지 않아도 핵심 정보가 자연스럽게 먼저 읽힙니다.",
+    detail: "데이터 구조가 바뀌면 빈 상태, 데이터 적음, 밀도 높음 안내도 같은 제품 톤으로 이어집니다.",
     chips: []
   };
 }
@@ -1543,34 +1565,32 @@ function PreviewStateNotice({
           : "flex h-full items-center justify-center rounded-xl border border-dashed border-line-strong/80 bg-[linear-gradient(180deg,rgba(255,252,248,0.96),rgba(242,237,230,0.92))] px-8 py-10"
       }
     >
-      <div className={compact ? "min-w-0" : "mx-auto max-w-xl text-center"}>
-        <div className={compact ? "flex flex-wrap items-start justify-between gap-3" : ""}>
-          <div className={compact ? "min-w-0 flex-1" : ""}>
-            <div className={compact ? "flex items-center gap-2" : "flex flex-col items-center"}>
-              {!compact ? <PreviewStateGlyph chartType={chartType} /> : null}
-              <span className="rounded-full border border-line-subtle bg-surface-1 px-3 py-1 text-[10px] tracking-[0.14em] text-ink-3">
-                {copy.badge}
-              </span>
-            </div>
-            <p className={compact ? "mt-3 text-sm font-medium text-ink-1" : "mt-4 text-lg font-semibold text-ink-1"}>{copy.title}</p>
-            <p className={compact ? "mt-2 text-sm leading-6 text-ink-2" : "mt-3 text-sm leading-6 text-ink-2"}>{copy.description}</p>
+      <div className={compact ? "min-w-0 max-w-3xl" : "mx-auto max-w-xl text-center"}>
+        <div className={compact ? "min-w-0" : ""}>
+          <div className={compact ? "flex items-center gap-2" : "flex flex-col items-center"}>
+            {!compact ? <PreviewStateGlyph chartType={chartType} /> : null}
+            <span className="rounded-full border border-line-subtle bg-surface-1 px-3 py-1 text-[10px] tracking-[0.14em] text-ink-3">
+              {copy.badge}
+            </span>
           </div>
-          {copy.chips.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {copy.chips.map((chip) => (
-                <span
-                  key={chip}
-                  className={cx(
-                    "rounded-full border bg-surface-1 px-2.5 py-1 text-[10px] tracking-[0.12em]",
-                    chipToneClassName
-                  )}
-                >
-                  {chip}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          <p className={compact ? "mt-3 text-sm font-medium text-ink-1" : "mt-4 text-lg font-semibold text-ink-1"}>{copy.title}</p>
+          <p className={compact ? "mt-2 text-sm leading-6 text-ink-2" : "mt-3 text-sm leading-6 text-ink-2"}>{copy.description}</p>
         </div>
+        {copy.chips.length > 0 ? (
+          <div className={cx("flex flex-wrap gap-2", compact ? "mt-3" : "mt-4 justify-center")}>
+            {copy.chips.map((chip) => (
+              <span
+                key={chip}
+                className={cx(
+                  "rounded-full border bg-surface-1 px-2.5 py-1 text-[10px] tracking-[0.12em]",
+                  chipToneClassName
+                )}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className={compact ? "mt-3 rounded-lg border border-line-subtle bg-surface-1/90 px-4 py-3" : "mt-5 rounded-lg border border-line-subtle bg-surface-1/92 px-4 py-4 text-left"}>
           <p className="text-sm leading-6 text-ink-2">{copy.detail}</p>
         </div>
@@ -1679,6 +1699,10 @@ function LineChart({
       0
     )
   );
+  const lastPointPrioritySeriesIndexes = getPrioritySeriesIndexes(
+    series,
+    series.length >= 5 ? 2 : series.length >= 4 ? 3 : series.length
+  );
 
   return (
     <div className="h-full rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-4 pb-4 pt-6">
@@ -1747,9 +1771,11 @@ function LineChart({
                 const tooltipId = `line-point-tooltip-${seriesIndex}-${pointIndex}`;
                 const isLastPoint = pointIndex === points.length - 1;
                 const isDominantSeries = dominantSeriesByIndex[pointIndex] === seriesIndex;
+                const shouldShowLastPointLabel =
+                  series.length <= 3 || labels.density === "detailed" || lastPointPrioritySeriesIndexes.has(seriesIndex);
                 const showPointLabel =
                   labels.mode !== "hidden" &&
-                  (isLastPoint || highlightedIndexes.has(pointIndex)) &&
+                  ((isLastPoint && shouldShowLastPointLabel) || (!isLastPoint && highlightedIndexes.has(pointIndex))) &&
                   (series.length === 1 || isLastPoint || isDominantSeries || labels.density === "detailed");
                 const labelOffset =
                   point.y < 86 ? 18 : series.length > 1 && !isLastPoint ? (seriesIndex % 2 === 0 ? -14 : 18) : -14;
@@ -2288,7 +2314,8 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
     draft.chartType === "line" || draft.chartType === "bar"
       ? getFieldLabel(preview, draft.bindings.seriesFieldKey)
       : xAxisLabel;
-  const shouldRenderLegend = draft.legend.show && previewState.state !== "empty" && legendItems.length > 0;
+  const canRenderExternalLegend = supportsExternalLegend(draft.chartType);
+  const shouldRenderLegend = canRenderExternalLegend && draft.legend.show && previewState.state !== "empty" && legendItems.length > 0;
 
   const categoryFieldOptions = preview.columns
     .filter((column) => column.type !== "number" && column.key !== draft.bindings.seriesFieldKey)
@@ -2333,11 +2360,11 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
       bindings: getBindingsForChartType(nextPreview, chartType, current.bindings),
       data: {
         ...current.data,
-        topN: getQaStateTopN(qaState)
+        topN: getQaStateTopN(chartType, qaState)
       },
       legend: {
         ...current.legend,
-        show: true
+        show: supportsExternalLegend(chartType)
       }
     }));
   }
@@ -2351,7 +2378,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
       bindings: getBindingsForChartType(nextPreview, current.chartType, current.bindings),
       data: {
         ...current.data,
-        topN: getQaStateTopN(nextState)
+        topN: getQaStateTopN(current.chartType, nextState)
       }
     }));
   }
@@ -2502,10 +2529,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                   <StatusBadge label={theme.label} tone="neutral" />
                   <StatusBadge label={`QA ${previewQaStateLabelMap[qaState]}`} tone="neutral" />
                   <StatusBadge label={getLabelModeBadge(draft.labels.mode)} tone={draft.labels.mode === "hidden" ? "neutral" : "live"} />
-                  <StatusBadge
-                    label={shouldRenderLegend ? `범례 ${draft.legend.position}` : "범례 숨김"}
-                    tone="neutral"
-                  />
+                  <StatusBadge label={canRenderExternalLegend ? (shouldRenderLegend ? `범례 ${draft.legend.position}` : "범례 숨김") : "범례 내장"} tone="neutral" />
                   <StatusBadge label={`라벨 ${getFieldLabel(preview, draft.bindings.labelFieldKey)}`} tone="neutral" />
                   <StatusBadge
                     label={previewState.badge}
@@ -2930,38 +2954,48 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
 
           {activeInspectorTab === "legend" ? (
           <InspectorSection title="범례" description="차트 본문보다 한 단계 낮은 정보 레이어로 두되, 긴 항목명과 많은 항목도 정돈되게 관리합니다.">
-            <ToggleField
-              label="범례 표시"
-              description="색과 항목의 대응 관계를 함께 보여줍니다."
-              checked={draft.legend.show}
-              onChange={(checked) =>
-                updateDraft((current) => ({
-                  ...current,
-                  legend: {
-                    ...current.legend,
-                    show: checked
+            {canRenderExternalLegend ? (
+              <>
+                <ToggleField
+                  label="범례 표시"
+                  description="색과 항목의 대응 관계를 함께 보여줍니다."
+                  checked={draft.legend.show}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      legend: {
+                        ...current.legend,
+                        show: checked
+                      }
+                    }))
                   }
-                }))
-              }
-            />
-            <SegmentedField
-              label="범례 위치"
-              value={draft.legend.position}
-              options={[
-                { value: "top", label: "상단" },
-                { value: "right", label: "오른쪽" },
-                { value: "bottom", label: "하단" }
-              ]}
-              onChange={(value) =>
-                updateDraft((current) => ({
-                  ...current,
-                  legend: {
-                    ...current.legend,
-                    position: value
+                />
+                <SegmentedField
+                  label="범례 위치"
+                  value={draft.legend.position}
+                  options={[
+                    { value: "top", label: "상단" },
+                    { value: "right", label: "오른쪽" },
+                    { value: "bottom", label: "하단" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      legend: {
+                        ...current.legend,
+                        position: value
+                      }
+                    }))
                   }
-                }))
-              }
-            />
+                />
+              </>
+            ) : (
+              <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+                {draft.chartType === "donut"
+                  ? "도넛 차트는 조각 목록이 이미 범례 역할을 함께 맡고 있어, 별도 범례를 더하지 않고 본문 밀도를 우선 정리합니다."
+                  : "막대 경주는 순위, 이름, 값이 한 줄 안에서 바로 대응되므로, 별도 범례보다 본문 라벨을 또렷하게 유지하는 쪽이 읽기 좋습니다."}
+              </div>
+            )}
           </InspectorSection>
           ) : null}
 
