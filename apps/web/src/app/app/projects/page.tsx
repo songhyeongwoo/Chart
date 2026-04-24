@@ -155,7 +155,7 @@ export default function ProjectsPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-2">
         {mockProjects.map((project) => {
           const primaryHref =
             project.saveState === "draft" ? `/app/projects/${project.id}/upload` : `/app/projects/${project.id}/editor`;
@@ -179,13 +179,19 @@ export default function ProjectsPage() {
                 <StatusBadge label={saveStateLabelMap[project.saveState]} tone={saveStateToneMap[project.saveState]} withDot />
                 <StatusBadge label="비공개" tone="private" />
               </div>
-              <div className="mt-5 rounded-xl border border-line-subtle bg-surface-2/72 p-3">
-                <PlaceholderChart chartType={project.chartType} heightClassName="h-[180px]" />
+              <div className="chart-paper mt-5 rounded-[22px] border border-line-strong/75 p-3">
+                <PlaceholderChart chartType={project.chartType} heightClassName="h-[200px]" />
               </div>
-              <div className="mt-4 rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3 text-sm leading-6 text-ink-2">
-                {project.saveState === "draft"
-                  ? "아직 업로드와 구조 확인 단계에 머물러 있습니다. 차트 추천 이후 에디터로 연결할 수 있습니다."
-                  : "차트 편집 상태가 잡혀 있어 제목, 라벨, 범례, 레이아웃을 바로 이어서 다듬을 수 있습니다."}
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_150px]">
+                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3 text-sm leading-6 text-ink-2">
+                  {project.saveState === "draft"
+                    ? "아직 업로드와 구조 확인 단계에 머물러 있습니다. 차트 추천 이후 에디터로 연결할 수 있습니다."
+                    : "차트 편집 상태가 잡혀 있어 제목, 라벨, 범례, 레이아웃을 바로 이어서 다듬을 수 있습니다."}
+                </div>
+                <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">다음 행동</p>
+                  <p className="mt-2 text-sm font-medium text-ink-1">{project.saveState === "draft" ? "업로드 이어서" : "에디터 열기"}</p>
+                </div>
               </div>
             </Card>
           );

@@ -15,8 +15,8 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 const variantClassName: Record<CardVariant, string> = {
   default: "rounded-xl border border-line-subtle bg-surface-1/96 shadow-soft",
-  subtle: "rounded-xl border border-line-subtle bg-surface-2/90 shadow-inset",
-  canvas: "rounded-xl border border-line-strong bg-surface-1 shadow-panel",
+  subtle: "rounded-xl border border-line-subtle bg-surface-2/92 shadow-inset",
+  canvas: "rounded-xl border border-line-strong bg-surface-1 shadow-panel editor-glow",
   ghost: "border border-transparent bg-transparent shadow-none"
 };
 
@@ -44,8 +44,8 @@ export function Card({
       {(title || description || headerActions) && (
         <div className="flex items-start justify-between gap-4 border-b border-line-subtle/85 px-6 py-5">
           <div>
-            {title ? <h3 className="text-[1.02rem] font-semibold tracking-[-0.02em] text-ink-1">{title}</h3> : null}
-            {description ? <p className="mt-1.5 max-w-2xl text-sm leading-6 text-ink-2">{description}</p> : null}
+            {title ? <h3 className="text-[1.06rem] font-semibold tracking-[-0.028em] text-ink-1">{title}</h3> : null}
+            {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-2">{description}</p> : null}
           </div>
           {headerActions}
         </div>

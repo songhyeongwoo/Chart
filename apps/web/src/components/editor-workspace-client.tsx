@@ -1122,7 +1122,13 @@ function FlowStep({
   complete?: boolean;
 }) {
   return (
-    <div className={active ? "rounded-xl border border-line-accent bg-surface-1 px-4 py-4 shadow-soft" : "rounded-xl border border-line-subtle bg-surface-1 px-4 py-4"}>
+    <div
+      className={
+        active
+          ? "rounded-2xl border border-line-accent bg-surface-1 px-4 py-4 shadow-soft"
+          : "rounded-2xl border border-line-subtle bg-surface-1/92 px-4 py-4"
+      }
+    >
       <div className="flex items-start gap-3">
         <span
           className={
@@ -1163,8 +1169,9 @@ function InspectorSection({
       title={title}
       description={description}
       headerActions={badge ? <StatusBadge label={badge} tone="neutral" /> : null}
+      className="rounded-[22px]"
     >
-      <div className="space-y-4">{children}</div>
+      <div className="space-y-3.5">{children}</div>
     </Card>
   );
 }
@@ -1179,9 +1186,9 @@ function ControlGroup({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
-      <p className="text-sm font-medium text-ink-1">{title}</p>
-      <p className="mt-1 text-sm leading-6 text-ink-2">{description}</p>
+    <div className="rounded-2xl border border-line-subtle bg-surface-1/96 px-4 py-4">
+      <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{title}</p>
+      <p className="mt-1.5 text-[13px] leading-6 text-ink-2">{description}</p>
       <div className="mt-4 space-y-3">{children}</div>
     </div>
   );
@@ -1209,7 +1216,7 @@ function QaStatePanel({
       headerActions={<StatusBadge label={`${chartType} · ${previewQaStateLabelMap[state]}`} tone="neutral" />}
     >
       <div className="space-y-3">
-        <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-3">
+        <div className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-3">
           <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">현재 샘플</p>
           <p className="mt-2 text-sm font-medium text-ink-1">{datasetName}</p>
           <p className="mt-1 text-xs leading-5 text-ink-3">chart type별 상태 차이를 눈으로 확인할 수 있도록 로컬 샘플만 바꿔 보여줍니다.</p>
@@ -1248,8 +1255,8 @@ function SegmentedField<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
-      <p className="text-sm font-medium text-ink-1">{label}</p>
+    <div className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
+      <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -1285,11 +1292,11 @@ function ToggleField({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-xl border border-line-subtle bg-surface-1 px-4 py-4 text-left transition hover:border-line-strong"
+      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4 text-left transition hover:border-line-strong"
     >
       <div>
-        <p className="text-sm font-medium text-ink-1">{label}</p>
-        <p className="mt-1 text-sm leading-6 text-ink-2">{description}</p>
+        <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
+        <p className="mt-1 text-[13px] leading-6 text-ink-2">{description}</p>
       </div>
       <span className={checked ? "relative inline-flex h-7 w-12 rounded-full bg-accent" : "relative inline-flex h-7 w-12 rounded-full bg-surface-3"}>
         <span
@@ -1318,9 +1325,9 @@ function RangeField({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
+    <div className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-ink-1">{label}</p>
+        <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
         <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-2">{value}개</span>
       </div>
       <input
@@ -1354,12 +1361,12 @@ function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-ink-2">{label}</span>
+      <span className="mb-2 block text-[13px] font-semibold tracking-[-0.02em] text-ink-2">{label}</span>
       <textarea
         rows={rows}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-sm border border-line-subtle bg-surface-1 px-4 py-3 text-sm leading-6 text-ink-1 outline-none transition placeholder:text-ink-3 focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
+        className="w-full rounded-md border border-line-subtle bg-surface-1 px-4 py-3 text-sm leading-6 text-ink-1 outline-none transition placeholder:text-ink-3 focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
       />
       {hint ? <span className="mt-2 block text-xs text-ink-3">{hint}</span> : null}
     </label>
@@ -1382,16 +1389,16 @@ function SelectField({
   required?: boolean;
 }) {
   return (
-    <label className="block rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
+    <label className="block rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-ink-1">{label}</span>
+        <span className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</span>
         <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3">
           {required ? "필수" : "선택"}
         </span>
       </div>
-      <p className="mt-2 text-sm leading-6 text-ink-2">{hint}</p>
+      <p className="mt-2 text-[13px] leading-6 text-ink-2">{hint}</p>
       <select
-        className="mt-3 h-11 w-full rounded-sm border border-line-subtle bg-surface-1 px-4 text-sm text-ink-1 outline-none transition focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
+        className="mt-3 h-11 w-full rounded-md border border-line-subtle bg-surface-1 px-4 text-sm text-ink-1 outline-none transition focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value || null)}
       >
@@ -1612,10 +1619,10 @@ function PreviewLegend({
   const hiddenItems = items.slice(adjustedVisibleCount);
   const containerClassName =
     position === "right"
-      ? "rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4"
+      ? "rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4"
       : position === "top"
-        ? "rounded-lg border border-line-subtle/80 bg-surface-2/68 px-4 py-3"
-        : "rounded-lg border border-line-subtle/80 bg-surface-2/72 px-4 py-4";
+        ? "rounded-xl border border-line-subtle/80 bg-surface-2/68 px-4 py-3"
+        : "rounded-xl border border-line-subtle/80 bg-surface-2/72 px-4 py-4";
   const listClassName =
     position === "right"
       ? "grid gap-2"
@@ -1684,8 +1691,8 @@ function PreviewStateNotice({
     <div
       className={
         compact
-          ? "rounded-lg border border-line-subtle bg-surface-2/88 px-4 py-4"
-          : "flex h-full items-center justify-center rounded-xl border border-dashed border-line-strong/80 bg-[linear-gradient(180deg,rgba(255,252,248,0.96),rgba(242,237,230,0.92))] px-8 py-10"
+          ? "rounded-xl border border-line-subtle bg-surface-2/88 px-4 py-4"
+          : "flex h-full items-center justify-center rounded-[26px] border border-dashed border-line-strong/80 bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(242,237,230,0.92))] px-8 py-10 shadow-inset"
       }
     >
       <div className={compact ? "min-w-0 max-w-3xl" : "mx-auto max-w-xl text-center"}>
@@ -1835,7 +1842,7 @@ function LineChart({
   const strokeWidth = getLineStrokeWidth(lineOptions.strokeWeight);
 
   return (
-    <div className="h-full rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-4 pb-4 pt-6 shadow-inset">
+    <div className="chart-paper h-full rounded-[26px] border border-line-strong/75 px-5 pb-5 pt-6 shadow-inset">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">값 축</p>
@@ -1890,6 +1897,14 @@ function LineChart({
 
           return (
             <g key={currentSeries.label}>
+              <path
+                d={`M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`}
+                fill="none"
+                stroke="rgba(255,255,255,0.62)"
+                strokeWidth={strokeWidth + 3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
               <path
                 d={`M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`}
                 fill="none"
@@ -2055,7 +2070,7 @@ function BarChart({
   const labelWeight = getLabelFontWeight(labels.weight);
 
   return (
-    <div className="rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-5 pb-5 pt-6 shadow-inset">
+    <div className="chart-paper rounded-[26px] border border-line-strong/75 px-5 pb-5 pt-6 shadow-inset">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">값 축</p>
@@ -2165,10 +2180,10 @@ function BarChart({
                             triggerClassName="flex h-full w-full items-end rounded-t-md"
                           >
                             <span
-                              className="block w-full rounded-t-md"
+                              className="block w-full rounded-t-[14px] border border-white/25"
                               style={{
                                 height: `${barHeight}px`,
-                                backgroundColor: colors[seriesIndex % colors.length]
+                                background: `linear-gradient(180deg, ${colors[seriesIndex % colors.length]}, rgba(48,71,82,0.9))`
                               }}
                             />
                           </PreviewTooltip>
@@ -2228,10 +2243,10 @@ function DonutChart({
   });
 
   return (
-    <div className="grid h-full min-h-[260px] gap-6 rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-6 py-6 shadow-inset lg:grid-cols-[240px_minmax(0,1fr)] lg:items-center">
+    <div className="chart-paper grid h-full min-h-[260px] gap-6 rounded-[26px] border border-line-strong/75 px-6 py-6 shadow-inset lg:grid-cols-[240px_minmax(0,1fr)] lg:items-center">
       <div className="flex justify-center">
-        <div className="relative size-52 rounded-full" style={{ background: `conic-gradient(${segments.join(", ")})` }}>
-          <div className="absolute flex flex-col items-center justify-center rounded-full bg-surface-1" style={{ inset: innerInset }}>
+        <div className="relative size-52 rounded-full shadow-soft" style={{ background: `conic-gradient(${segments.join(", ")})` }}>
+          <div className="absolute flex flex-col items-center justify-center rounded-full bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(244,239,231,0.94))]" style={{ inset: innerInset }}>
             <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">총합</span>
             <span className="mt-2 text-xl font-semibold text-ink-1">{formatNumber(total)}</span>
             {labels.mode !== "hidden" ? (
@@ -2251,7 +2266,7 @@ function DonutChart({
           <div
             key={item.label}
             className={cx(
-              "rounded-md border border-line-subtle bg-surface-1 px-4 py-3",
+              "rounded-[16px] border border-line-subtle bg-surface-1 px-4 py-3",
               isPriority ? "border-line-strong shadow-soft" : null
             )}
           >
@@ -2309,8 +2324,8 @@ function RacingBarChart({
   const labelWeight = getLabelFontWeight(labels.weight);
 
   return (
-    <div className="grid h-full min-h-[260px] gap-4 rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-5 py-5 shadow-inset">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line-subtle bg-surface-1 px-4 py-3">
+    <div className="chart-paper grid h-full min-h-[260px] gap-4 rounded-[26px] border border-line-strong/75 px-5 py-5 shadow-inset">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-line-subtle bg-surface-1 px-4 py-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Timeline</p>
           <p className="mt-1 text-sm font-medium text-ink-1">현재 프레임 기준 순위</p>
@@ -2362,7 +2377,7 @@ function RacingBarChart({
               <span className="text-sm text-ink-2">{formatLabelValue(item.value, labels, totalValue)}</span>
             ) : null}
           </div>
-          <div className="h-11 rounded-md bg-surface-2 p-1">
+          <div className="rounded-[16px] bg-surface-2 p-1.5">
             <PreviewTooltip
               eyebrow={`${index + 1}위`}
               label={showName ? item.displayLabel : item.label}
@@ -2370,13 +2385,13 @@ function RacingBarChart({
               detail={`${Math.round((item.value / Math.max(totalValue, 1)) * 100)}% 비중`}
               align="left"
               wrapperClassName="flex h-full"
-              triggerClassName="flex h-full min-w-0 items-center rounded-sm px-4 text-xs font-medium text-ink-inverse"
+              triggerClassName="flex h-full min-w-0 items-center rounded-[12px] px-4 text-xs font-medium text-ink-inverse"
             >
               <span
-                className="flex h-full min-w-0 items-center rounded-sm px-4 text-xs font-medium text-ink-inverse"
+                className="flex h-11 min-w-0 items-center rounded-[12px] px-4 text-xs font-medium text-ink-inverse"
                 style={{
                   width: `${widthPercentage}%`,
-                  backgroundColor: colors[index % colors.length]
+                  background: `linear-gradient(90deg, ${colors[index % colors.length]}, rgba(48,71,82,0.92))`
                 }}
               >
                 <span className="truncate">{inlineText}</span>
@@ -2615,14 +2630,15 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
       topBar={
         <TopBar
           title={mockEditorSession.project.name}
-          subtitle={`${projectId} · 업로드에서 감지한 열 구조를 이어 받아 결과물 중심으로 차트를 다듬는 편집 공간입니다.`}
+          subtitle={`${projectId} · 업로드에서 감지한 열 구조를 이어 받아, 추천 초안을 실제 발표용 결과물로 다듬는 편집 공간입니다.`}
           actions={
             <>
               <StatusBadge label="비공개 프로젝트" tone="private" />
+              <StatusBadge label={`표본 ${previewItemCount}개`} tone="neutral" />
               <StatusBadge label={chartDefinition.label} tone="live" />
               <StatusBadge label={hasUnsavedChanges ? "저장 전 변경 있음" : "로컬 저장됨"} tone={hasUnsavedChanges ? "draft" : "saved"} withDot />
               <Button variant="tertiary" onClick={handleReset} disabled={!hasUnsavedChanges}>
-                되돌리기
+                변경 취소
               </Button>
               <Button onClick={handleSave}>로컬 저장</Button>
             </>
@@ -2631,7 +2647,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
       }
       rail={
         <>
-          <Card variant="subtle" title="편집 흐름" description="업로드 단계에서 넘어온 맥락과 에디터 작업을 같은 리듬으로 보여줍니다.">
+          <Card variant="canvas" title="편집 흐름" description="업로드에서 넘어온 맥락과 에디터 작업 리듬을 한 번에 읽게 만듭니다.">
             <div className="space-y-3">
               <FlowStep index={1} title="차트 선택" description="데이터에 맞는 차트 유형을 고르고 바꿔봅니다." complete />
               <FlowStep index={2} title="데이터 연결" description="어떤 열을 기준, 값, 범례로 쓸지 정합니다." active />
@@ -2640,10 +2656,10 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
           </Card>
 
-          <Card variant="subtle" title="업로드에서 받은 데이터" description="에디터 안에서도 데이터 맥락이 사라지지 않게 유지합니다.">
+          <Card variant="subtle" title="업로드에서 받은 데이터" description="에디터 안에서도 데이터 맥락이 사라지지 않도록 조용하게 유지합니다.">
             <div className="space-y-3">
               {preview.columns.map((column) => (
-                <div key={column.key} className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
+                <div key={column.key} className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-ink-1">{column.name}</p>
                     <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3">{column.type}</span>
@@ -2654,7 +2670,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
           </Card>
 
-          <Card variant="default" title="차트 유형" description="차트별로 inspector와 결과물 읽기 방식이 함께 달라집니다.">
+          <Card variant="default" title="차트 유형" description="차트별로 inspector 언어와 결과물의 읽기 방식이 함께 바뀝니다.">
             <div className="space-y-2">
               {chartCatalog.map((option) => (
                 <button
@@ -2663,8 +2679,8 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                   onClick={() => handleChartChange(option.value)}
                   className={
                     option.value === draft.chartType
-                      ? "w-full rounded-xl border border-line-accent bg-surface-2 px-4 py-3.5 text-left shadow-soft"
-                      : "w-full rounded-xl border border-line-subtle bg-surface-1 px-4 py-3.5 text-left transition hover:border-line-strong"
+                      ? "w-full rounded-2xl border border-line-accent bg-surface-2 px-4 py-3.5 text-left shadow-soft"
+                      : "w-full rounded-2xl border border-line-subtle bg-surface-1 px-4 py-3.5 text-left transition hover:border-line-strong"
                   }
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -2689,24 +2705,36 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
         </>
       }
       canvas={
-        <Card variant="canvas" title="결과 미리보기" description="필드 선택과 옵션 변경이 중앙 결과물과 설명 문구에 즉시 반영됩니다.">
-          <div className={`rounded-xl border border-line-strong bg-[linear-gradient(180deg,rgba(250,247,242,0.96),rgba(236,231,223,0.84))] ${density.shell}`}>
+        <Card variant="canvas" title="발표용 미리보기 캔버스" description="필드 선택과 옵션 변경이 중앙 결과물과 설명 문구에 즉시 반영됩니다.">
+          <div className={`editor-stage rounded-[28px] border border-line-strong/85 ${density.shell}`}>
             <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
               <div>
                 <p className="text-caption uppercase tracking-[0.18em] text-ink-3">Presentation Canvas</p>
                 <h3 className="mt-2 text-title-2 font-semibold tracking-[-0.03em] text-ink-1">{draft.text.title}</h3>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-2">{recommendationCopy}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge label={chartDefinition.label} tone="live" />
                 <StatusBadge label={getChartToneText(draft.chartType)} tone="neutral" />
+                <StatusBadge label={`${draft.layout.aspectRatio} 캔버스`} tone="neutral" />
               </div>
             </div>
 
             <div
               data-preview-tooltip-boundary
-              className={`mt-6 rounded-xl border border-line-strong bg-surface-1 shadow-panel ${density.canvas}`}
+              className={`chart-paper sheen-border mt-6 rounded-[28px] border border-line-strong shadow-panel ${density.canvas}`}
             >
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-subtle bg-surface-1/88 px-4 py-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Canvas mode</p>
+                  <p className="mt-1 text-sm font-medium text-ink-1">문서에 바로 옮길 수 있는 결과물 중심 프리뷰</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge label={theme.label} tone="neutral" />
+                  <StatusBadge label={`QA ${previewQaStateLabelMap[qaState]}`} tone="neutral" />
+                </div>
+              </div>
+
               <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
                 <div>
                   <p className="text-caption uppercase tracking-[0.16em] text-ink-3">Chart Output</p>
@@ -2714,8 +2742,6 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-2">{draft.text.subtitle}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <StatusBadge label={theme.label} tone="neutral" />
-                  <StatusBadge label={`QA ${previewQaStateLabelMap[qaState]}`} tone="neutral" />
                   <StatusBadge label={getLabelModeBadge(draft.labels.mode)} tone={draft.labels.mode === "hidden" ? "neutral" : "live"} />
                   <StatusBadge label={canRenderExternalLegend ? (shouldRenderLegend ? `범례 ${draft.legend.position}` : "범례 숨김") : "범례 내장"} tone="neutral" />
                   <StatusBadge label={draft.axes.showGrid ? "그리드 표시" : "그리드 최소화"} tone="neutral" />
@@ -2741,7 +2767,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
               <div
                 className={
                   shouldRenderLegend && draft.legend.position === "right"
-                    ? "mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_220px]"
+                    ? "mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_220px]"
                     : "mt-6"
                 }
               >
@@ -2798,12 +2824,12 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 </div>
               ) : null}
 
-              <div className="mt-5 rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+              <div className="mt-5 rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
                 <p className="text-sm leading-6 text-ink-2">{draft.text.caption}</p>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3">
+                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">데이터 연결</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {`${getFieldLabel(preview, draft.bindings.xFieldKey)} -> ${getFieldLabel(preview, draft.bindings.valueFieldKey)}`}
@@ -2812,11 +2838,11 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                     범례 {getFieldLabel(preview, draft.bindings.seriesFieldKey)} · 라벨 {getFieldLabel(preview, draft.bindings.labelFieldKey)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3">
+                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">추천 문구 기준</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">{recommendationCopy}</p>
                 </div>
-                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3">
+                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">레이아웃</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {draft.layout.aspectRatio} · {draft.layout.density === "compact" ? "촘촘하게" : draft.layout.density === "comfortable" ? "넉넉하게" : "기본"}

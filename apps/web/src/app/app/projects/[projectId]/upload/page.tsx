@@ -44,7 +44,7 @@ export default async function UploadPage({ params }: { params: Promise<{ project
           title="데이터 입력"
           description="장식적인 드롭존보다 사용자가 안심하고 다음 화면을 예상할 수 있는 구조를 우선합니다."
         >
-          <div className="rounded-xl border border-dashed border-line-accent bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(236,231,223,0.92))] px-6 py-16 text-center">
+          <div className="rounded-[24px] border border-dashed border-line-accent bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(236,231,223,0.92))] px-6 py-16 text-center">
             <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Upload</p>
             <h2 className="mt-4 text-display font-semibold tracking-[-0.05em] text-ink-1">CSV 또는 XLSX 파일을 올려주세요</h2>
             <p className="mx-auto mt-4 max-w-2xl text-body text-ink-2">
@@ -62,15 +62,15 @@ export default async function UploadPage({ params }: { params: Promise<{ project
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+            <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
               <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Check</p>
               <p className="mt-2 text-sm font-medium text-ink-1">시트와 표본 행 확인</p>
             </div>
-            <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+            <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
               <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Infer</p>
               <p className="mt-2 text-sm font-medium text-ink-1">열 역할 자동 추론</p>
             </div>
-            <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+            <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
               <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Recommend</p>
               <p className="mt-2 text-sm font-medium text-ink-1">차트 후보와 첫 초안 제안</p>
             </div>
@@ -121,7 +121,9 @@ export default async function UploadPage({ params }: { params: Promise<{ project
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
-        <PreviewTable preview={mockDatasetPreview} />
+        <div className="overflow-hidden rounded-[24px] border border-line-strong bg-surface-1 shadow-soft">
+          <PreviewTable preview={mockDatasetPreview} />
+        </div>
 
         <div className="space-y-4">
           <Card variant="subtle" title="감지된 열과 역할" description="비전공자도 어느 값을 어디에 넣는지 이해할 수 있도록 역할 후보를 함께 보여줍니다.">

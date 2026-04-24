@@ -39,7 +39,7 @@ export default function NewProjectPage() {
               />
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
                   <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Output intent</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {["보고서용", "발표용", "SNS용"].map((item, index) => (
@@ -57,7 +57,7 @@ export default function NewProjectPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+                <div className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
                   <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Visual tone</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {["차분하게", "선명하게", "설명형"].map((item, index) => (
@@ -76,7 +76,7 @@ export default function NewProjectPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-line-strong bg-surface-1 px-5 py-5 shadow-soft">
+              <div className="rounded-[24px] border border-line-strong bg-surface-1 px-5 py-5 shadow-soft">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Next flow</p>
                 <div className="mt-4 space-y-3">
                   {[
@@ -93,7 +93,7 @@ export default function NewProjectPage() {
                       description: "제목, 색상, 축, 범례, 라벨, 레이아웃을 한 화면에서 다듬습니다."
                     }
                   ].map((item) => (
-                    <div key={item.step} className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
+                    <div key={item.step} className="rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4">
                       <p className="text-sm font-medium text-ink-1">{item.step}</p>
                       <p className="mt-2 text-sm leading-6 text-ink-2">{item.description}</p>
                     </div>

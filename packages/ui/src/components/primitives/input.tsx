@@ -16,7 +16,7 @@ export function Input({ className, label, hint, error, trailing, id, ...props }:
       {label ? <span className="mb-2 block text-sm font-medium tracking-[-0.01em] text-ink-2">{label}</span> : null}
       <span
         className={cn(
-          "flex h-12 items-center rounded-sm border bg-surface-1 px-4 shadow-inset transition-all duration-200 ease-refined",
+          "flex h-12 items-center rounded-md border bg-surface-1/98 px-4 shadow-inset transition-all duration-200 ease-refined",
           error ? "border-danger/60 focus-within:border-danger" : "border-line-subtle focus-within:border-line-accent",
           "focus-within:ring-2 focus-within:ring-accent-soft/45"
         )}
