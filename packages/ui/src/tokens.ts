@@ -1,53 +1,53 @@
 export const designTokens = {
   color: {
-    canvas: "247 244 239",
-    canvasElevated: "241 236 229",
-    surface1: "255 252 248",
-    surface2: "248 244 238",
-    surface3: "239 233 225",
-    surface4: "230 223 213",
-    ink1: "28 29 32",
-    ink2: "76 77 83",
-    ink3: "122 123 130",
-    inkInverse: "250 247 243",
-    lineSubtle: "219 212 203",
-    lineStrong: "183 173 161",
-    lineAccent: "158 129 112",
-    accent: "132 92 70",
-    accentSoft: "224 206 193",
-    accentStrong: "94 62 46",
-    success: "78 119 101",
-    warning: "162 117 73",
-    danger: "148 84 78",
-    info: "80 109 136"
+    canvas: "244 240 233",
+    canvasElevated: "236 231 223",
+    surface1: "250 247 242",
+    surface2: "242 237 230",
+    surface3: "231 223 213",
+    surface4: "214 203 190",
+    ink1: "25 31 37",
+    ink2: "78 86 94",
+    ink3: "122 128 135",
+    inkInverse: "247 244 238",
+    lineSubtle: "219 210 198",
+    lineStrong: "184 171 154",
+    lineAccent: "92 86 76",
+    accent: "52 67 76",
+    accentSoft: "212 220 225",
+    accentStrong: "28 39 47",
+    success: "71 106 87",
+    warning: "150 111 76",
+    danger: "145 85 79",
+    info: "82 105 121"
   },
   radius: {
-    xs: "8px",
-    sm: "12px",
-    md: "16px",
-    lg: "22px",
-    xl: "28px"
+    xs: "10px",
+    sm: "14px",
+    md: "18px",
+    lg: "24px",
+    xl: "32px"
   },
   shadow: {
-    soft: "0 10px 30px rgba(32, 24, 18, 0.04)",
-    panel: "0 18px 60px rgba(32, 24, 18, 0.06)",
-    inset: "inset 0 1px 0 rgba(255, 255, 255, 0.5)"
+    soft: "0 16px 40px rgba(31, 30, 26, 0.05)",
+    panel: "0 34px 90px rgba(24, 24, 20, 0.09)",
+    inset: "inset 0 1px 0 rgba(255, 255, 255, 0.52)"
   },
   motion: {
-    ease: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+    ease: "cubic-bezier(0.22, 1, 0.36, 1)",
     quick: "160ms",
-    normal: "220ms"
+    normal: "240ms"
   },
   typography: {
-    sans: "\"Avenir Next\", \"Segoe UI\", \"Helvetica Neue\", Arial, sans-serif",
-    display: "\"Iowan Old Style\", \"Palatino Linotype\", \"Book Antiqua\", serif",
+    sans: "\"Pretendard Variable\", \"SUIT Variable\", \"Noto Sans KR\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif",
+    display: "\"Pretendard Variable\", \"SUIT Variable\", \"Noto Sans KR\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif",
     scale: {
-      hero: "clamp(3.8rem, 8vw, 6.8rem)",
-      display: "clamp(2.7rem, 5vw, 4.6rem)",
-      title1: "2rem",
-      title2: "1.5rem",
-      body: "0.975rem",
-      caption: "0.75rem"
+      hero: "clamp(3.15rem, 6vw, 5.65rem)",
+      display: "clamp(2.25rem, 4vw, 4rem)",
+      title1: "clamp(1.8rem, 2.5vw, 2.45rem)",
+      title2: "1.375rem",
+      body: "1rem",
+      caption: "0.76rem"
     }
   },
   spacing: {
@@ -62,8 +62,8 @@ export const designTokens = {
     16: "4rem"
   },
   border: {
-    subtle: "1px solid rgba(219, 212, 203, 0.9)",
-    strong: "1px solid rgba(183, 173, 161, 1)"
+    subtle: "1px solid rgba(219, 210, 198, 0.9)",
+    strong: "1px solid rgba(184, 171, 154, 1)"
   },
-  chartPalette: ["#845C46", "#A87050", "#C18E68", "#6E8B7A", "#496277", "#D1B49A"]
+  chartPalette: ["#304752", "#51707D", "#7D8E80", "#B0835B", "#CC9B74", "#D8C4AE"]
 } as const;

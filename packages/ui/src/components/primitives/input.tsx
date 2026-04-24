@@ -13,10 +13,10 @@ export function Input({ className, label, hint, error, trailing, id, ...props }:
 
   return (
     <label className="block">
-      {label ? <span className="mb-2 block text-sm font-medium text-ink-2">{label}</span> : null}
+      {label ? <span className="mb-2 block text-sm font-medium tracking-[-0.01em] text-ink-2">{label}</span> : null}
       <span
         className={cn(
-          "flex h-11 items-center rounded-sm border bg-surface-1 px-4 transition-all duration-200 ease-refined",
+          "flex h-12 items-center rounded-sm border bg-surface-1 px-4 shadow-inset transition-all duration-200 ease-refined",
           error ? "border-danger/60 focus-within:border-danger" : "border-line-subtle focus-within:border-line-accent",
           "focus-within:ring-2 focus-within:ring-accent-soft/45"
         )}
@@ -39,4 +39,3 @@ export function Input({ className, label, hint, error, trailing, id, ...props }:
     </label>
   );
 }
-

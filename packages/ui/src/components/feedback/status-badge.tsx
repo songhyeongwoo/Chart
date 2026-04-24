@@ -6,7 +6,7 @@ type StatusTone = "saved" | "draft" | "live" | "private" | "neutral" | "attentio
 const toneClassName: Record<StatusTone, string> = {
   saved: "border border-success/20 bg-success/10 text-success",
   draft: "border border-warning/20 bg-warning/10 text-warning",
-  live: "border border-accent/20 bg-accent-soft/35 text-accent-strong",
+  live: "border border-accent/16 bg-accent-soft/45 text-accent-strong",
   private: "border border-line-subtle bg-surface-2 text-ink-2",
   neutral: "border border-line-subtle bg-surface-1 text-ink-2",
   attention: "border border-danger/15 bg-danger/10 text-danger"
@@ -31,7 +31,7 @@ export function StatusBadge({ label, tone = "draft", withDot = false }: StatusBa
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em]",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium tracking-[0.06em]",
         toneClassName[tone]
       )}
     >
@@ -40,4 +40,3 @@ export function StatusBadge({ label, tone = "draft", withDot = false }: StatusBa
     </span>
   );
 }
-

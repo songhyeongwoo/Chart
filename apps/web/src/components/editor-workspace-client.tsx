@@ -32,6 +32,13 @@ type AspectRatio = "16:10" | "4:3" | "1:1";
 type LabelMode = "value" | "name" | "both" | "hidden";
 type LabelDensity = "minimal" | "balanced" | "detailed";
 type LabelNumberFormat = "number" | "compact" | "percent";
+type LabelSize = "sm" | "md" | "lg";
+type LabelWeight = "regular" | "medium" | "bold";
+type LineWeight = "thin" | "balanced" | "bold";
+type BarThickness = "slim" | "balanced" | "bold";
+type DonutCenterSpace = "tight" | "balanced" | "wide";
+type DonutGap = "tight" | "balanced" | "wide";
+type PlaybackSpeed = "slow" | "normal" | "fast";
 type InspectorTab = "data" | "style" | "axes" | "legend" | "labels" | "layout";
 type TooltipAlign = "left" | "center" | "right";
 type TooltipPlacement = "top" | "bottom";
@@ -75,6 +82,10 @@ interface EditorDraftState {
   style: {
     theme: ThemeKey;
   };
+  axes: {
+    showAxis: boolean;
+    showGrid: boolean;
+  };
   legend: {
     show: boolean;
     position: LegendPosition;
@@ -83,12 +94,30 @@ interface EditorDraftState {
     mode: LabelMode;
     density: LabelDensity;
     numberFormat: LabelNumberFormat;
+    size: LabelSize;
+    weight: LabelWeight;
     prefix: string;
     suffix: string;
   };
   layout: {
     aspectRatio: AspectRatio;
     density: DensityMode;
+  };
+  chartOptions: {
+    line: {
+      showPoints: boolean;
+      strokeWeight: LineWeight;
+    };
+    bar: {
+      thickness: BarThickness;
+    };
+    donut: {
+      centerSpace: DonutCenterSpace;
+      segmentGap: DonutGap;
+    };
+    racingBar: {
+      playSpeed: PlaybackSpeed;
+    };
   };
 }
 
@@ -135,29 +164,29 @@ const themeMap: Record<
   }
 > = {
   classic: {
-    label: "기본 테마",
-    description: "차분하고 균형 잡힌 기본값입니다.",
-    colors: ["#845C46", "#A87050", "#C18E68", "#6E8B7A", "#496277", "#D1B49A"]
+    label: "스튜디오",
+    description: "짙은 슬레이트와 브론즈 톤으로 결과물을 또렷하게 정리합니다.",
+    colors: ["#304752", "#51707D", "#7D8E80", "#B0835B", "#CC9B74", "#D8C4AE"]
   },
   moss: {
-    label: "모스 테마",
-    description: "자연스럽고 안정적인 대비를 만듭니다.",
-    colors: ["#5E756A", "#7C9487", "#A0B0A6", "#C7C2B4", "#B08868", "#D0B299"]
+    label: "모스",
+    description: "자연스러운 온도감과 안정적인 명암으로 설명형 차트를 만듭니다.",
+    colors: ["#425D56", "#6D8579", "#91A597", "#A97A56", "#C99E77", "#D8CBB9"]
   },
   charcoal: {
-    label: "차콜 테마",
-    description: "또렷하고 명료한 발표용 대비를 만듭니다.",
-    colors: ["#30343B", "#55606E", "#8A7564", "#B89E8A", "#C8C2BB", "#6F7D88"]
+    label: "차콜",
+    description: "발표 슬라이드에 어울리는 선명한 대비와 무게 중심을 만듭니다.",
+    colors: ["#212B31", "#455B67", "#6D7E87", "#8E705E", "#BC9275", "#D8D0C5"]
   }
 };
 
 const inspectorTabs: Array<{ value: InspectorTab; label: string; description: string }> = [
-  { value: "data", label: "Data", description: "필드 연결" },
-  { value: "style", label: "Style", description: "톤과 색" },
-  { value: "axes", label: "Axes", description: "축 읽기" },
-  { value: "legend", label: "Legend", description: "범례" },
-  { value: "labels", label: "Labels", description: "내부 텍스트" },
-  { value: "layout", label: "Layout", description: "캔버스" }
+  { value: "data", label: "데이터", description: "필드 연결" },
+  { value: "style", label: "스타일", description: "톤과 텍스트" },
+  { value: "axes", label: "축/그리드", description: "읽기 구조" },
+  { value: "legend", label: "범례", description: "정보 레이어" },
+  { value: "labels", label: "라벨", description: "이름과 값" },
+  { value: "layout", label: "레이아웃", description: "캔버스" }
 ];
 
 const initialDraft: EditorDraftState = {
@@ -175,6 +204,10 @@ const initialDraft: EditorDraftState = {
   style: {
     theme: "classic"
   },
+  axes: {
+    showAxis: true,
+    showGrid: true
+  },
   legend: {
     show: true,
     position: "right"
@@ -183,12 +216,30 @@ const initialDraft: EditorDraftState = {
     mode: "both",
     density: "balanced",
     numberFormat: "number",
+    size: "md",
+    weight: "medium",
     prefix: "",
     suffix: ""
   },
   layout: {
     aspectRatio: "16:10",
     density: "balanced"
+  },
+  chartOptions: {
+    line: {
+      showPoints: true,
+      strokeWeight: "balanced"
+    },
+    bar: {
+      thickness: "balanced"
+    },
+    donut: {
+      centerSpace: "balanced",
+      segmentGap: "balanced"
+    },
+    racingBar: {
+      playSpeed: "normal"
+    }
   }
 };
 
@@ -616,6 +667,78 @@ function getDensityClasses(density: DensityMode) {
   return { shell: "p-6", canvas: "p-5", gap: "gap-4" };
 }
 
+function getLabelFontSize(size: LabelSize) {
+  if (size === "sm") {
+    return { text: 10, axis: 10, value: "text-[10px]" };
+  }
+
+  if (size === "lg") {
+    return { text: 12, axis: 12, value: "text-xs" };
+  }
+
+  return { text: 11, axis: 11, value: "text-[11px]" };
+}
+
+function getLabelFontWeight(weight: LabelWeight) {
+  if (weight === "regular") {
+    return { svg: 400, className: "font-normal" };
+  }
+
+  if (weight === "bold") {
+    return { svg: 700, className: "font-semibold" };
+  }
+
+  return { svg: 500, className: "font-medium" };
+}
+
+function getLineStrokeWidth(weight: LineWeight) {
+  if (weight === "thin") {
+    return 2.5;
+  }
+
+  if (weight === "bold") {
+    return 4.5;
+  }
+
+  return 3.5;
+}
+
+function getBarWidthClass(thickness: BarThickness) {
+  if (thickness === "slim") {
+    return "max-w-[34px]";
+  }
+
+  if (thickness === "bold") {
+    return "max-w-[60px]";
+  }
+
+  return "max-w-[46px]";
+}
+
+function getDonutInnerInset(centerSpace: DonutCenterSpace) {
+  if (centerSpace === "tight") {
+    return "20%";
+  }
+
+  if (centerSpace === "wide") {
+    return "30%";
+  }
+
+  return "24%";
+}
+
+function getDonutGapValue(gap: DonutGap) {
+  if (gap === "tight") {
+    return 0.6;
+  }
+
+  if (gap === "wide") {
+    return 1.6;
+  }
+
+  return 1;
+}
+
 function collectPreviewDiagnostics(
   preview: NonNullable<typeof datasetPreview>,
   chartType: EditorChartType,
@@ -999,7 +1122,7 @@ function FlowStep({
   complete?: boolean;
 }) {
   return (
-    <div className={active ? "rounded-lg border border-line-accent bg-surface-1 px-4 py-4" : "rounded-lg border border-line-subtle bg-surface-1 px-4 py-4"}>
+    <div className={active ? "rounded-xl border border-line-accent bg-surface-1 px-4 py-4 shadow-soft" : "rounded-xl border border-line-subtle bg-surface-1 px-4 py-4"}>
       <div className="flex items-start gap-3">
         <span
           className={
@@ -1086,7 +1209,7 @@ function QaStatePanel({
       headerActions={<StatusBadge label={`${chartType} · ${previewQaStateLabelMap[state]}`} tone="neutral" />}
     >
       <div className="space-y-3">
-        <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-3">
+        <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-3">
           <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">현재 샘플</p>
           <p className="mt-2 text-sm font-medium text-ink-1">{datasetName}</p>
           <p className="mt-1 text-xs leading-5 text-ink-3">chart type별 상태 차이를 눈으로 확인할 수 있도록 로컬 샘플만 바꿔 보여줍니다.</p>
@@ -1100,8 +1223,8 @@ function QaStatePanel({
               onClick={() => onChange(option)}
               className={
                 option === state
-                  ? "rounded-full border border-line-strong bg-surface-1 px-3 py-1.5 text-[11px] font-medium tracking-[0.12em] text-ink-1"
-                  : "rounded-full border border-line-subtle bg-surface-1 px-3 py-1.5 text-[11px] tracking-[0.12em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
+                  ? "rounded-full border border-line-strong bg-surface-1 px-3 py-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-1"
+                  : "rounded-full border border-line-subtle bg-surface-1 px-3 py-1.5 text-[11px] tracking-[0.08em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
               }
             >
               {previewQaStateLabelMap[option]}
@@ -1125,7 +1248,7 @@ function SegmentedField<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
+    <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
       <p className="text-sm font-medium text-ink-1">{label}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {options.map((option) => (
@@ -1135,8 +1258,8 @@ function SegmentedField<T extends string>({
             onClick={() => onChange(option.value)}
             className={
               value === option.value
-                ? "rounded-full border border-line-accent bg-surface-2 px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-ink-1"
-                : "rounded-full border border-line-subtle bg-surface-1 px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
+                ? "rounded-full border border-line-accent bg-surface-2 px-3 py-1 text-[11px] font-medium tracking-[0.08em] text-ink-1"
+                : "rounded-full border border-line-subtle bg-surface-1 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
             }
           >
             {option.label}
@@ -1162,7 +1285,7 @@ function ToggleField({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-left transition hover:border-line-strong"
+      className="flex w-full items-center justify-between gap-4 rounded-xl border border-line-subtle bg-surface-1 px-4 py-4 text-left transition hover:border-line-strong"
     >
       <div>
         <p className="text-sm font-medium text-ink-1">{label}</p>
@@ -1195,10 +1318,10 @@ function RangeField({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
+    <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-ink-1">{label}</p>
-        <span className="rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-2">{value}개</span>
+        <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-2">{value}개</span>
       </div>
       <input
         className="mt-4 h-2 w-full accent-[rgb(132,92,70)]"
@@ -1259,10 +1382,10 @@ function SelectField({
   required?: boolean;
 }) {
   return (
-    <label className="block rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
+    <label className="block rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-ink-1">{label}</span>
-        <span className="rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3">
+        <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3">
           {required ? "필수" : "선택"}
         </span>
       </div>
@@ -1647,6 +1770,8 @@ function LineChart({
   colors,
   totalValue,
   labels,
+  axes,
+  lineOptions,
   layoutDensity,
   xAxisLabel,
   valueAxisLabel
@@ -1657,6 +1782,8 @@ function LineChart({
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  axes: EditorDraftState["axes"];
+  lineOptions: EditorDraftState["chartOptions"]["line"];
   layoutDensity: DensityMode;
   xAxisLabel: string;
   valueAxisLabel: string;
@@ -1703,9 +1830,12 @@ function LineChart({
     series,
     series.length >= 5 ? 2 : series.length >= 4 ? 3 : series.length
   );
+  const labelFont = getLabelFontSize(labels.size);
+  const labelWeight = getLabelFontWeight(labels.weight);
+  const strokeWidth = getLineStrokeWidth(lineOptions.strokeWeight);
 
   return (
-    <div className="h-full rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-4 pb-4 pt-6">
+    <div className="h-full rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-4 pb-4 pt-6 shadow-inset">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">값 축</p>
@@ -1717,7 +1847,8 @@ function LineChart({
         </div>
       </div>
       <svg viewBox="0 0 620 280" className="h-full min-h-[260px] w-full">
-        {minorTicks.map((tick) => {
+        {axes.showGrid &&
+          minorTicks.map((tick) => {
           const y = chartBottom - (tick / maxValue) * chartHeight;
 
           return (
@@ -1732,21 +1863,24 @@ function LineChart({
             />
           );
         })}
-        {yTicks.map((tick) => {
+        {axes.showGrid &&
+          yTicks.map((tick) => {
           const y = chartBottom - (tick / maxValue) * chartHeight;
 
           return (
             <g key={`line-major-${tick}`}>
               <line x1={chartLeft} x2={chartRight} y1={y} y2={y} stroke="rgba(183,173,161,0.24)" strokeDasharray="4 6" />
-              <line x1={chartLeft - 6} x2={chartLeft} y1={y} y2={y} stroke="rgba(183,173,161,0.4)" />
-              <text x={chartLeft - 10} y={y + 4} textAnchor="end" fontSize="11" fill="#8A8780">
+              {axes.showAxis ? <line x1={chartLeft - 6} x2={chartLeft} y1={y} y2={y} stroke="rgba(183,173,161,0.4)" /> : null}
+              {axes.showAxis ? (
+                <text x={chartLeft - 10} y={y + 4} textAnchor="end" fontSize={labelFont.axis} fill="#8A8780">
                 {formatAxisValue(tick)}
-              </text>
+                </text>
+              ) : null}
             </g>
           );
         })}
-        <line x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartBottom} stroke="rgba(183,173,161,0.34)" />
-        <line x1={chartLeft} x2={chartRight} y1={chartBottom} y2={chartBottom} stroke="rgba(183,173,161,0.36)" />
+        {axes.showAxis ? <line x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartBottom} stroke="rgba(183,173,161,0.34)" /> : null}
+        {axes.showAxis ? <line x1={chartLeft} x2={chartRight} y1={chartBottom} y2={chartBottom} stroke="rgba(183,173,161,0.36)" /> : null}
         {series.map((currentSeries, seriesIndex) => {
           const points = currentSeries.values.map((value, index) => {
             const x = (index / Math.max(categories.length - 1, 1)) * chartWidth + chartLeft;
@@ -1760,7 +1894,7 @@ function LineChart({
                 d={`M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`}
                 fill="none"
                 stroke={colors[seriesIndex % colors.length]}
-                strokeWidth="3.5"
+                strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -1805,9 +1939,16 @@ function LineChart({
                       strokeWidth="2"
                       className="opacity-0 transition-opacity duration-100 group-focus-within:opacity-100"
                     />
-                    <circle cx={point.x} cy={point.y} r="4.5" fill={colors[seriesIndex % colors.length]} />
+                    {lineOptions.showPoints ? <circle cx={point.x} cy={point.y} r="4.5" fill={colors[seriesIndex % colors.length]} /> : null}
                     {showPointLabel ? (
-                      <text x={point.x} y={clamp(point.y + labelOffset, 20, 248)} textAnchor="middle" fontSize="10.5" fill="#5D5A54">
+                      <text
+                        x={point.x}
+                        y={clamp(point.y + labelOffset, 20, 248)}
+                        textAnchor="middle"
+                        fontSize={labelFont.text}
+                        fontWeight={labelWeight.svg}
+                        fill="#5D5A54"
+                      >
                         {truncateLabel(labelText, showName && showValue ? 18 : 12)}
                       </text>
                     ) : null}
@@ -1828,6 +1969,10 @@ function LineChart({
           );
         })}
         {categories.map((label, index) => {
+          if (!axes.showAxis) {
+            return null;
+          }
+
           const x = (index / Math.max(categories.length - 1, 1)) * chartWidth + chartLeft;
 
           return (
@@ -1836,7 +1981,7 @@ function LineChart({
               {axisLabelIndexes.has(index) ? (
                 <g>
                   <title>{categoryLabels[index] ?? label}</title>
-                  <text x={x} y="255" textAnchor="middle" fontSize="11" fill="#7E7B75">
+                  <text x={x} y="255" textAnchor="middle" fontSize={labelFont.axis} fill="#7E7B75">
                     {truncateLabel(categoryLabels[index] ?? label, axisLabelLimit)}
                   </text>
                 </g>
@@ -1856,6 +2001,8 @@ function BarChart({
   colors,
   totalValue,
   labels,
+  axes,
+  barOptions,
   layoutDensity,
   xAxisLabel,
   valueAxisLabel
@@ -1866,6 +2013,8 @@ function BarChart({
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  axes: EditorDraftState["axes"];
+  barOptions: EditorDraftState["chartOptions"]["bar"];
   layoutDensity: DensityMode;
   xAxisLabel: string;
   valueAxisLabel: string;
@@ -1902,9 +2051,11 @@ function BarChart({
       0
     )
   );
+  const labelFont = getLabelFontSize(labels.size);
+  const labelWeight = getLabelFontWeight(labels.weight);
 
   return (
-    <div className="rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-5 pb-5 pt-6">
+    <div className="rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-5 pb-5 pt-6 shadow-inset">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">값 축</p>
@@ -1918,7 +2069,8 @@ function BarChart({
 
       <div className="grid grid-cols-[52px_minmax(0,1fr)] gap-3">
         <div className="relative h-[220px]">
-          {yTicks.map((tick) => {
+          {axes.showAxis &&
+            yTicks.map((tick) => {
             const top = `${(1 - tick / maxValue) * 100}%`;
 
             return (
@@ -1935,7 +2087,8 @@ function BarChart({
 
         <div className="relative min-w-0">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[220px]">
-            {minorTicks.map((tick) => {
+            {axes.showGrid &&
+              minorTicks.map((tick) => {
               const top = `${(1 - tick / maxValue) * 100}%`;
 
               return (
@@ -1946,7 +2099,8 @@ function BarChart({
                 />
               );
             })}
-            {yTicks.map((tick) => {
+            {axes.showGrid &&
+              yTicks.map((tick) => {
               const top = `${(1 - tick / maxValue) * 100}%`;
 
               return (
@@ -1982,9 +2136,9 @@ function BarChart({
                         (barHeight >= (shouldShowBarName ? 52 : 34) || labels.density === "detailed");
 
                       return (
-                        <div key={`${category}-${currentSeries.label}`} className="flex h-full w-full max-w-[46px] flex-col justify-end">
+                        <div key={`${category}-${currentSeries.label}`} className={cx("flex h-full w-full flex-col justify-end", getBarWidthClass(barOptions.thickness))}>
                           {shouldShowBarName || shouldShowBarValue ? (
-                            <div className="mb-2 text-center text-[11px] leading-4 text-ink-2">
+                            <div className={cx("mb-2 text-center leading-4 text-ink-2", labelFont.value, labelWeight.className)}>
                               {shouldShowBarName ? (
                                 <PreviewTooltip
                                   eyebrow="막대 라벨"
@@ -2022,9 +2176,9 @@ function BarChart({
                       );
                     })}
                   </div>
-                  {showAxisLabel ? (
+                  {showAxisLabel && axes.showAxis ? (
                     <PreviewTooltip eyebrow="축 라벨" label={axisLabel} detail="가로축에서 항목을 구분합니다.">
-                      <span className="mt-3 block truncate text-center text-[13px] leading-5 text-ink-2">
+                      <span className={cx("mt-3 block truncate text-center leading-5 text-ink-2", labelWeight.className, labelFont.value)}>
                         {truncateLabel(axisLabel, axisLabelLimit)}
                       </span>
                     </PreviewTooltip>
@@ -2044,30 +2198,40 @@ function BarChart({
 function DonutChart({
   items,
   colors,
-  labels
+  labels,
+  donutOptions
 }: {
   items: Array<{ label: string; displayLabel: string; value: number }>;
   colors: string[];
   labels: EditorDraftState["labels"];
+  donutOptions: EditorDraftState["chartOptions"]["donut"];
 }) {
   const total = Math.max(1, items.reduce((sum, item) => sum + item.value, 0));
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, items.length, "donut");
   const priorityIndexes = getTopValueIndexes(items.map((item) => item.value), labelLimit);
+  const gapValue = getDonutGapValue(donutOptions.segmentGap);
+  const innerInset = getDonutInnerInset(donutOptions.centerSpace);
+  const labelWeight = getLabelFontWeight(labels.weight);
+  const labelFont = getLabelFontSize(labels.size);
   let current = 0;
-  const segments = items.map((item, index) => {
+  const segments = items.flatMap((item, index) => {
     const percentage = (item.value / total) * 100;
     const start = current;
     current += percentage;
-    return `${colors[index % colors.length]} ${start}% ${current}%`;
+    const colorEnd = Math.max(start, current - gapValue);
+    return [
+      `${colors[index % colors.length]} ${start}% ${colorEnd}%`,
+      `rgb(250 247 242) ${colorEnd}% ${current}%`
+    ];
   });
 
   return (
-    <div className="grid h-full min-h-[260px] gap-6 rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-6 py-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-center">
+    <div className="grid h-full min-h-[260px] gap-6 rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-6 py-6 shadow-inset lg:grid-cols-[240px_minmax(0,1fr)] lg:items-center">
       <div className="flex justify-center">
         <div className="relative size-52 rounded-full" style={{ background: `conic-gradient(${segments.join(", ")})` }}>
-          <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full bg-surface-1">
+          <div className="absolute flex flex-col items-center justify-center rounded-full bg-surface-1" style={{ inset: innerInset }}>
             <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">총합</span>
             <span className="mt-2 text-xl font-semibold text-ink-1">{formatNumber(total)}</span>
             {labels.mode !== "hidden" ? (
@@ -2101,13 +2265,13 @@ function DonutChart({
                   detail={`${share}% 비중`}
                   align="left"
                 >
-                  <span className="max-w-[150px] truncate text-sm font-medium text-ink-1">
+                  <span className={cx("max-w-[150px] truncate text-sm text-ink-1", labelWeight.className)}>
                     {truncateLabel(showName ? item.displayLabel : item.label, 18)}
                   </span>
                 </PreviewTooltip>
               </div>
               {labels.mode !== "hidden" && showValue && (isPriority || labels.density === "detailed") ? (
-                <span className={isPriority ? "text-sm font-medium text-ink-1" : "text-sm text-ink-2"}>
+                <span className={cx(isPriority ? "text-sm text-ink-1" : "text-sm text-ink-2", labelWeight.className, labelFont.value)}>
                   {formatLabelValue(item.value, labels, total)}
                 </span>
               ) : null}
@@ -2128,21 +2292,33 @@ function RacingBarChart({
   items,
   colors,
   totalValue,
-  labels
+  labels,
+  racingBarOptions
 }: {
   items: Array<{ label: string; displayLabel: string; value: number }>;
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  racingBarOptions: EditorDraftState["chartOptions"]["racingBar"];
 }) {
   const maxValue = Math.max(1, ...items.map((item) => item.value));
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, items.length, "racing-bar");
   const priorityIndexes = getTopValueIndexes(items.map((item) => item.value), labelLimit);
+  const labelWeight = getLabelFontWeight(labels.weight);
 
   return (
-    <div className="grid h-full min-h-[260px] gap-4 rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-5 py-5">
+    <div className="grid h-full min-h-[260px] gap-4 rounded-xl border border-line-subtle bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(242,237,230,0.9))] px-5 py-5 shadow-inset">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line-subtle bg-surface-1 px-4 py-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Timeline</p>
+          <p className="mt-1 text-sm font-medium text-ink-1">현재 프레임 기준 순위</p>
+        </div>
+        <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-2">
+          재생 속도 {racingBarOptions.playSpeed === "slow" ? "느리게" : racingBarOptions.playSpeed === "fast" ? "빠르게" : "기본"}
+        </span>
+      </div>
       {items.map((item, index) => {
         const widthPercentage = Math.max(18, (item.value / maxValue) * 100);
         const isPriority = priorityIndexes.has(index);
@@ -2177,7 +2353,7 @@ function RacingBarChart({
                 detail="순위 막대의 이름과 값입니다."
                 align="left"
               >
-                <span className="max-w-[180px] truncate text-sm font-medium text-ink-1">
+                <span className={cx("max-w-[180px] truncate text-sm text-ink-1", labelWeight.className)}>
                   {truncateLabel(showName ? item.displayLabel : item.label, 20)}
                 </span>
               </PreviewTooltip>
@@ -2222,6 +2398,8 @@ function PreviewChart({
   colors,
   totalValue,
   labels,
+  axes,
+  chartOptions,
   layoutDensity,
   xAxisLabel,
   valueAxisLabel
@@ -2234,6 +2412,8 @@ function PreviewChart({
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  axes: EditorDraftState["axes"];
+  chartOptions: EditorDraftState["chartOptions"];
   layoutDensity: DensityMode;
   xAxisLabel: string;
   valueAxisLabel: string;
@@ -2247,6 +2427,8 @@ function PreviewChart({
         colors={colors}
         totalValue={totalValue}
         labels={labels}
+        axes={axes}
+        lineOptions={chartOptions.line}
         layoutDensity={layoutDensity}
         xAxisLabel={xAxisLabel}
         valueAxisLabel={valueAxisLabel}
@@ -2263,6 +2445,8 @@ function PreviewChart({
         colors={colors}
         totalValue={totalValue}
         labels={labels}
+        axes={axes}
+        barOptions={chartOptions.bar}
         layoutDensity={layoutDensity}
         xAxisLabel={xAxisLabel}
         valueAxisLabel={valueAxisLabel}
@@ -2271,10 +2455,10 @@ function PreviewChart({
   }
 
   if (chartType === "donut") {
-    return <DonutChart items={items} colors={colors} labels={labels} />;
+    return <DonutChart items={items} colors={colors} labels={labels} donutOptions={chartOptions.donut} />;
   }
 
-  return <RacingBarChart items={items} colors={colors} totalValue={totalValue} labels={labels} />;
+  return <RacingBarChart items={items} colors={colors} totalValue={totalValue} labels={labels} racingBarOptions={chartOptions.racingBar} />;
 }
 
 export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
@@ -2316,6 +2500,9 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
       : xAxisLabel;
   const canRenderExternalLegend = supportsExternalLegend(draft.chartType);
   const shouldRenderLegend = canRenderExternalLegend && draft.legend.show && previewState.state !== "empty" && legendItems.length > 0;
+  const topNLabel = draft.chartType === "racing-bar" ? "순위 수" : "Top N 범위";
+  const previewItemCount =
+    draft.chartType === "line" ? derivedData.categories.length : derivedData.items.length || derivedData.categories.length;
 
   const categoryFieldOptions = preview.columns
     .filter((column) => column.type !== "number" && column.key !== draft.bindings.seriesFieldKey)
@@ -2428,22 +2615,23 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
       topBar={
         <TopBar
           title={mockEditorSession.project.name}
-          subtitle={`${projectId} · 업로드에서 감지한 열 구조를 그대로 이어 받아, 어떤 데이터를 어떤 기준으로 보여줄지 직접 고르는 편집 흐름입니다.`}
+          subtitle={`${projectId} · 업로드에서 감지한 열 구조를 이어 받아 결과물 중심으로 차트를 다듬는 편집 공간입니다.`}
           actions={
             <>
               <StatusBadge label="비공개 프로젝트" tone="private" />
+              <StatusBadge label={chartDefinition.label} tone="live" />
               <StatusBadge label={hasUnsavedChanges ? "저장 전 변경 있음" : "로컬 저장됨"} tone={hasUnsavedChanges ? "draft" : "saved"} withDot />
               <Button variant="tertiary" onClick={handleReset} disabled={!hasUnsavedChanges}>
-                저장 상태로 되돌리기
+                되돌리기
               </Button>
-              <Button onClick={handleSave}>변경 내용 저장</Button>
+              <Button onClick={handleSave}>로컬 저장</Button>
             </>
           }
         />
       }
       rail={
         <>
-          <Card variant="subtle" title="편집 흐름" description="업로드에서 넘어온 데이터 구조와 에디터 작업이 한 흐름으로 이어집니다.">
+          <Card variant="subtle" title="편집 흐름" description="업로드 단계에서 넘어온 맥락과 에디터 작업을 같은 리듬으로 보여줍니다.">
             <div className="space-y-3">
               <FlowStep index={1} title="차트 선택" description="데이터에 맞는 차트 유형을 고르고 바꿔봅니다." complete />
               <FlowStep index={2} title="데이터 연결" description="어떤 열을 기준, 값, 범례로 쓸지 정합니다." active />
@@ -2452,13 +2640,13 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
           </Card>
 
-          <Card variant="subtle" title="업로드에서 받은 데이터" description="업로드 단계에서 감지한 열 구조와 역할 후보를 그대로 보여줍니다.">
+          <Card variant="subtle" title="업로드에서 받은 데이터" description="에디터 안에서도 데이터 맥락이 사라지지 않게 유지합니다.">
             <div className="space-y-3">
               {preview.columns.map((column) => (
-                <div key={column.key} className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
+                <div key={column.key} className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-ink-1">{column.name}</p>
-                    <span className="rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3">{column.type}</span>
+                    <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3">{column.type}</span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-ink-2">{getFieldRoleDescription(column)}</p>
                 </div>
@@ -2466,7 +2654,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
           </Card>
 
-          <Card variant="default" title="차트 유형" description="선택한 차트에 따라 필요한 필드 구성이 달라집니다.">
+          <Card variant="default" title="차트 유형" description="차트별로 inspector와 결과물 읽기 방식이 함께 달라집니다.">
             <div className="space-y-2">
               {chartCatalog.map((option) => (
                 <button
@@ -2475,8 +2663,8 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                   onClick={() => handleChartChange(option.value)}
                   className={
                     option.value === draft.chartType
-                      ? "w-full rounded-md border border-line-accent bg-surface-2 px-3 py-3 text-left"
-                      : "w-full rounded-md border border-line-subtle bg-surface-1 px-3 py-3 text-left transition hover:border-line-strong"
+                      ? "w-full rounded-xl border border-line-accent bg-surface-2 px-4 py-3.5 text-left shadow-soft"
+                      : "w-full rounded-xl border border-line-subtle bg-surface-1 px-4 py-3.5 text-left transition hover:border-line-strong"
                   }
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -2484,8 +2672,8 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                     <span
                       className={
                         option.value === draft.chartType
-                          ? "rounded-full border border-line-accent bg-surface-1 px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-ink-1"
-                          : "rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3"
+                          ? "rounded-full border border-line-accent bg-surface-1 px-3 py-1 text-[11px] font-medium tracking-[0.08em] text-ink-1"
+                          : "rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3"
                       }
                     >
                       {option.badge}
@@ -2501,12 +2689,12 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
         </>
       }
       canvas={
-        <Card variant="canvas" title="결과 미리보기" description="필드 선택과 옵션 변경이 중앙 결과와 추천 문구에 즉시 반영됩니다.">
-          <div className={`rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.92),rgba(239,233,225,0.76))] ${density.shell}`}>
+        <Card variant="canvas" title="결과 미리보기" description="필드 선택과 옵션 변경이 중앙 결과물과 설명 문구에 즉시 반영됩니다.">
+          <div className={`rounded-xl border border-line-strong bg-[linear-gradient(180deg,rgba(250,247,242,0.96),rgba(236,231,223,0.84))] ${density.shell}`}>
             <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
               <div>
-                <p className="text-caption uppercase tracking-[0.18em] text-ink-3">추천된 구성</p>
-                <h3 className="mt-2 text-title-2 font-semibold text-ink-1">{draft.text.title}</h3>
+                <p className="text-caption uppercase tracking-[0.18em] text-ink-3">Presentation Canvas</p>
+                <h3 className="mt-2 text-title-2 font-semibold tracking-[-0.03em] text-ink-1">{draft.text.title}</h3>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-2">{recommendationCopy}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -2517,12 +2705,12 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
 
             <div
               data-preview-tooltip-boundary
-              className={`mt-6 rounded-xl border border-line-strong bg-surface-1 shadow-soft ${density.canvas}`}
+              className={`mt-6 rounded-xl border border-line-strong bg-surface-1 shadow-panel ${density.canvas}`}
             >
               <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
                 <div>
-                  <p className="text-caption uppercase tracking-[0.16em] text-ink-3">시각화 제목</p>
-                  <h4 className="mt-2 text-xl font-semibold text-ink-1">{draft.text.title}</h4>
+                  <p className="text-caption uppercase tracking-[0.16em] text-ink-3">Chart Output</p>
+                  <h4 className="mt-2 text-[1.55rem] font-semibold tracking-[-0.04em] text-ink-1">{draft.text.title}</h4>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-2">{draft.text.subtitle}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -2530,7 +2718,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                   <StatusBadge label={`QA ${previewQaStateLabelMap[qaState]}`} tone="neutral" />
                   <StatusBadge label={getLabelModeBadge(draft.labels.mode)} tone={draft.labels.mode === "hidden" ? "neutral" : "live"} />
                   <StatusBadge label={canRenderExternalLegend ? (shouldRenderLegend ? `범례 ${draft.legend.position}` : "범례 숨김") : "범례 내장"} tone="neutral" />
-                  <StatusBadge label={`라벨 ${getFieldLabel(preview, draft.bindings.labelFieldKey)}`} tone="neutral" />
+                  <StatusBadge label={draft.axes.showGrid ? "그리드 표시" : "그리드 최소화"} tone="neutral" />
                   <StatusBadge
                     label={previewState.badge}
                     tone={previewState.state === "balanced" ? "saved" : previewState.state === "empty" ? "draft" : "neutral"}
@@ -2577,6 +2765,8 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                         colors={theme.colors}
                         totalValue={derivedData.totalValue}
                         labels={draft.labels}
+                        axes={draft.axes}
+                        chartOptions={draft.chartOptions}
                         layoutDensity={draft.layout.density}
                         xAxisLabel={xAxisLabel}
                         valueAxisLabel={valueAxisLabel}
@@ -2608,12 +2798,12 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 </div>
               ) : null}
 
-              <div className="mt-5 rounded-lg border border-line-subtle bg-surface-2 px-4 py-4">
+              <div className="mt-5 rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-4">
                 <p className="text-sm leading-6 text-ink-2">{draft.text.caption}</p>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-md border border-line-subtle bg-surface-1 px-4 py-3">
+                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">데이터 연결</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {`${getFieldLabel(preview, draft.bindings.xFieldKey)} -> ${getFieldLabel(preview, draft.bindings.valueFieldKey)}`}
@@ -2622,11 +2812,11 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                     범례 {getFieldLabel(preview, draft.bindings.seriesFieldKey)} · 라벨 {getFieldLabel(preview, draft.bindings.labelFieldKey)}
                   </p>
                 </div>
-                <div className="rounded-md border border-line-subtle bg-surface-1 px-4 py-3">
+                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">추천 문구 기준</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">{recommendationCopy}</p>
                 </div>
-                <div className="rounded-md border border-line-subtle bg-surface-1 px-4 py-3">
+                <div className="rounded-xl border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">레이아웃</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {draft.layout.aspectRatio} · {draft.layout.density === "compact" ? "촘촘하게" : draft.layout.density === "comfortable" ? "넉넉하게" : "기본"}
@@ -2638,7 +2828,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             <MetricStrip
               className="mt-5"
               items={[
-                { label: "보이는 항목", value: `${draft.chartType === "line" ? derivedData.categories.length : derivedData.items.length || derivedData.categories.length}개`, hint: "선택한 필드와 정렬 기준 반영" },
+                { label: "보이는 항목", value: `${previewItemCount}개`, hint: "선택한 필드와 정렬 기준 반영" },
                 { label: "합계", value: formatNumber(derivedData.totalValue), hint: "현재 보이는 결과 기준" },
                 { label: "저장 상태", value: hasUnsavedChanges ? "저장 전 변경 있음" : savedLabel, hint: "local state만 반영" }
               ]}
@@ -2654,7 +2844,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
           onTabChange={(tab) => setActiveInspectorTab(tab as InspectorTab)}
         >
           {activeInspectorTab === "data" ? (
-          <InspectorSection title="데이터 탭" description="무슨 데이터를 어떤 기준으로 보여줄지 직접 고르는 핵심 단계입니다." badge={chartDefinition.label}>
+          <InspectorSection title="데이터 연결" description="무슨 데이터를 어떤 기준으로 보여줄지 직접 고르는 핵심 단계입니다." badge={chartDefinition.label}>
             <SelectField
               label={bindingUiCopy.x.label}
               hint={bindingUiCopy.x.hint}
@@ -2709,10 +2899,10 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
 
             {draft.chartType !== "line" ? (
               <RangeField
-                label="Top N 범위"
+                label={topNLabel}
                 value={draft.data.topN}
                 min={3}
-                max={6}
+                max={draft.chartType === "racing-bar" ? 8 : 6}
                 onChange={(value) =>
                   updateDraft((current) => ({
                     ...current,
@@ -2728,11 +2918,21 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 선 차트는 보통 흐름 전체를 보는 것이 자연스러워 Top N 대신 가로축과 구분 기준 조합이 더 중요합니다.
               </div>
             )}
+
+            <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+              {draft.chartType === "bar"
+                ? "막대 차트에서는 정렬과 Top N, 막대 두께가 함께 읽기 속도를 결정합니다."
+                : draft.chartType === "donut"
+                  ? "도넛 차트에서는 항목 기준과 값 기준이 곧 조각 구조가 됩니다."
+                  : draft.chartType === "racing-bar"
+                    ? "막대 경주는 순위 수와 재생 속도 감각이 곧 결과물 인상을 만듭니다."
+                    : "선 차트에서는 시간 축과 값 축의 조합이 가장 중요한 구조를 만듭니다."}
+            </div>
           </InspectorSection>
           ) : null}
 
           {activeInspectorTab === "labels" ? (
-          <InspectorSection title="Labels" description="차트 안에 직접 새겨지는 이름과 값을 조절합니다. 라벨 필드를 바꾸면 본문 텍스트도 즉시 달라집니다." badge={getLabelModeBadge(draft.labels.mode)}>
+          <InspectorSection title="라벨 설정" description="차트 안에 직접 새겨지는 이름과 값을 조절합니다. 라벨 필드를 바꾸면 본문 텍스트도 즉시 달라집니다." badge={getLabelModeBadge(draft.labels.mode)}>
             <ControlGroup title="라벨 기준" description="차트 안에서 어떤 이름을 읽게 할지 먼저 정합니다. 긴 이름은 화면에서는 줄이고, hover로 전체를 확인합니다.">
             <SelectField
               label="라벨 필드"
@@ -2837,6 +3037,46 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
             </ControlGroup>
 
+            <ControlGroup title="라벨 톤" description="라벨 크기와 굵기를 바꿔 결과물의 정보 밀도를 조절합니다.">
+            <SegmentedField
+              label="라벨 크기"
+              value={draft.labels.size}
+              options={[
+                { value: "sm", label: "작게" },
+                { value: "md", label: "기본" },
+                { value: "lg", label: "크게" }
+              ]}
+              onChange={(value) =>
+                updateDraft((current) => ({
+                  ...current,
+                  labels: {
+                    ...current.labels,
+                    size: value
+                  }
+                }))
+              }
+            />
+
+            <SegmentedField
+              label="라벨 굵기"
+              value={draft.labels.weight}
+              options={[
+                { value: "regular", label: "기본" },
+                { value: "medium", label: "중간" },
+                { value: "bold", label: "강하게" }
+              ]}
+              onChange={(value) =>
+                updateDraft((current) => ({
+                  ...current,
+                  labels: {
+                    ...current.labels,
+                    weight: value
+                  }
+                }))
+              }
+            />
+            </ControlGroup>
+
             <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
               {draft.chartType === "bar"
                 ? "막대 차트는 막대 끝에 값을, 축 아래에는 이름을 나눠 보여줘 비교가 빨리 읽히게 합니다."
@@ -2922,12 +3162,192 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 ))}
               </div>
             </div>
+
+            {draft.chartType === "line" ? (
+              <ControlGroup title="선 차트 옵션" description="포인트와 선 굵기를 조절해 발표용 톤과 설명형 톤을 맞춥니다.">
+                <ToggleField
+                  label="포인트 표시"
+                  description="핵심 포인트를 점으로 강조합니다."
+                  checked={draft.chartOptions.line.showPoints}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        line: {
+                          ...current.chartOptions.line,
+                          showPoints: checked
+                        }
+                      }
+                    }))
+                  }
+                />
+                <SegmentedField
+                  label="선 굵기"
+                  value={draft.chartOptions.line.strokeWeight}
+                  options={[
+                    { value: "thin", label: "얇게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "bold", label: "강하게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        line: {
+                          ...current.chartOptions.line,
+                          strokeWeight: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
+
+            {draft.chartType === "bar" ? (
+              <ControlGroup title="막대 차트 옵션" description="막대 두께로 비교 밀도와 무게 중심을 조절합니다.">
+                <SegmentedField
+                  label="막대 두께"
+                  value={draft.chartOptions.bar.thickness}
+                  options={[
+                    { value: "slim", label: "가늘게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "bold", label: "두껍게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        bar: {
+                          ...current.chartOptions.bar,
+                          thickness: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
+
+            {draft.chartType === "donut" ? (
+              <ControlGroup title="도넛 차트 옵션" description="조각 간격과 중앙 공간으로 비중 차트의 분위기를 조절합니다.">
+                <SegmentedField
+                  label="조각 간격"
+                  value={draft.chartOptions.donut.segmentGap}
+                  options={[
+                    { value: "tight", label: "좁게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "wide", label: "넓게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        donut: {
+                          ...current.chartOptions.donut,
+                          segmentGap: value
+                        }
+                      }
+                    }))
+                  }
+                />
+                <SegmentedField
+                  label="중앙 공간"
+                  value={draft.chartOptions.donut.centerSpace}
+                  options={[
+                    { value: "tight", label: "좁게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "wide", label: "넓게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        donut: {
+                          ...current.chartOptions.donut,
+                          centerSpace: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
+
+            {draft.chartType === "racing-bar" ? (
+              <ControlGroup title="막대 경주 옵션" description="향후 MP4/GIF export로 이어질 재생 감각을 미리 조절합니다.">
+                <SegmentedField
+                  label="재생 속도"
+                  value={draft.chartOptions.racingBar.playSpeed}
+                  options={[
+                    { value: "slow", label: "느리게" },
+                    { value: "normal", label: "기본" },
+                    { value: "fast", label: "빠르게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        racingBar: {
+                          ...current.chartOptions.racingBar,
+                          playSpeed: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
           </InspectorSection>
           </>
           ) : null}
 
           {activeInspectorTab === "axes" ? (
-          <InspectorSection title="Axes" description="축 제목, 눈금, 보조 격자가 데이터보다 앞서지 않도록 읽기 위계를 정리합니다." badge="읽기 기준">
+          <InspectorSection title="축과 그리드" description="축 제목, 눈금, 보조 격자가 데이터보다 앞서지 않도록 읽기 위계를 정리합니다." badge="읽기 기준">
+            {(draft.chartType === "line" || draft.chartType === "bar") ? (
+              <>
+                <ToggleField
+                  label="축 표시"
+                  description="값 눈금과 축 라벨을 표시합니다."
+                  checked={draft.axes.showAxis}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      axes: {
+                        ...current.axes,
+                        showAxis: checked
+                      }
+                    }))
+                  }
+                />
+                <ToggleField
+                  label="그리드 표시"
+                  description="보조선과 기준선을 유지해 값 비교를 더 쉽게 만듭니다."
+                  checked={draft.axes.showGrid}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      axes: {
+                        ...current.axes,
+                        showGrid: checked
+                      }
+                    }))
+                  }
+                />
+              </>
+            ) : (
+              <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+                {draft.chartType === "donut"
+                  ? "도넛 차트는 축보다 조각, 범례, 라벨 밀도가 읽기 품질을 더 크게 좌우합니다."
+                  : "막대 경주는 축보다 순위, 바 길이, 속도 감각이 결과물 인상을 결정합니다."}
+              </div>
+            )}
             <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
               <p className="text-sm font-medium text-ink-1">가로축 / 항목 기준</p>
               <p className="mt-2 text-sm leading-6 text-ink-2">{getFieldLabel(preview, draft.bindings.xFieldKey)}</p>
@@ -3037,6 +3457,13 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 }))
               }
             />
+
+            {draft.chartType === "racing-bar" ? (
+              <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+                현재는 정적인 프레임이지만, 이 레이아웃과 속도 설정은 향후 MP4/GIF export UI로 자연스럽게 확장될 수 있도록
+                구조를 유지합니다.
+              </div>
+            ) : null}
           </InspectorSection>
           ) : null}
 

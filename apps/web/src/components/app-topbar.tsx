@@ -42,7 +42,7 @@ export function AppTopBar() {
       actions={
         <>
           <StatusBadge label="한국어 중심" tone="neutral" />
-          <StatusBadge label="수동 저장" tone="draft" withDot />
+          <StatusBadge label="로컬 상태 편집" tone="draft" withDot />
           <Button variant="tertiary" size="sm">
             디자인 시스템
           </Button>

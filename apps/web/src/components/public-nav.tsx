@@ -6,17 +6,17 @@ export function PublicNav() {
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="flex items-end gap-4">
         <div>
-          <p className="text-caption uppercase tracking-[0.24em] text-ink-3">Creative Data Studio</p>
-          <h1 className="mt-1 font-display text-title-2 text-ink-1">MAC</h1>
+          <p className="text-caption font-medium uppercase tracking-[0.24em] text-ink-3">Premium no-code visualization editor</p>
+          <h1 className="mt-1 font-display text-title-2 font-semibold tracking-[-0.05em] text-ink-1">MAC</h1>
         </div>
-        <StatusBadge label="Private by default" tone="neutral" />
+        <StatusBadge label="한국어 중심" tone="neutral" />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Link className="px-2 py-1 text-sm text-ink-2 transition hover:text-ink-1" href="/login">
-          Sign in
+          로그인
         </Link>
         <Link href="/app/projects">
-          <Button size="sm">Open app shell</Button>
+          <Button size="sm">작업공간 열기</Button>
         </Link>
       </div>
     </div>
