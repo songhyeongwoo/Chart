@@ -2,7 +2,7 @@
 
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
-import { mockEditorSession } from "../lib/mock-data";
+import { mockEditorSession, previewQaDatasetMap, previewQaStateLabelMap, type PreviewQaState } from "../lib/mock-data";
 import {
   buildRecommendationCopy,
   deriveChartData,
@@ -32,9 +32,40 @@ type AspectRatio = "16:10" | "4:3" | "1:1";
 type LabelMode = "value" | "name" | "both" | "hidden";
 type LabelDensity = "minimal" | "balanced" | "detailed";
 type LabelNumberFormat = "number" | "compact" | "percent";
+type LabelSize = "sm" | "md" | "lg";
+type LabelWeight = "regular" | "medium" | "bold";
+type LineWeight = "thin" | "balanced" | "bold";
+type BarThickness = "slim" | "balanced" | "bold";
+type DonutCenterSpace = "tight" | "balanced" | "wide";
+type DonutGap = "tight" | "balanced" | "wide";
+type PlaybackSpeed = "slow" | "normal" | "fast";
 type InspectorTab = "data" | "style" | "axes" | "legend" | "labels" | "layout";
 type TooltipAlign = "left" | "center" | "right";
 type TooltipPlacement = "top" | "bottom";
+type PreviewDataState = "balanced" | "empty" | "sparse" | "extreme";
+type PreviewDataReason = "too-few-points" | "too-many-items" | "long-labels" | "wide-range" | "too-many-series";
+
+interface PreviewDataDiagnostics {
+  visibleCount: number;
+  totalCount: number;
+  hiddenCount: number;
+  totalSeriesCount: number;
+  longestLabelLength: number;
+  maxValue: number;
+  minPositiveValue: number;
+  nonZeroValueCount: number;
+  rangeRatio: number;
+  dominantShare: number;
+}
+
+interface PreviewDataCopy {
+  state: PreviewDataState;
+  badge: string;
+  title: string;
+  description: string;
+  detail: string;
+  chips: string[];
+}
 
 interface EditorDraftState {
   chartType: EditorChartType;
@@ -51,6 +82,10 @@ interface EditorDraftState {
   style: {
     theme: ThemeKey;
   };
+  axes: {
+    showAxis: boolean;
+    showGrid: boolean;
+  };
   legend: {
     show: boolean;
     position: LegendPosition;
@@ -59,12 +94,30 @@ interface EditorDraftState {
     mode: LabelMode;
     density: LabelDensity;
     numberFormat: LabelNumberFormat;
+    size: LabelSize;
+    weight: LabelWeight;
     prefix: string;
     suffix: string;
   };
   layout: {
     aspectRatio: AspectRatio;
     density: DensityMode;
+  };
+  chartOptions: {
+    line: {
+      showPoints: boolean;
+      strokeWeight: LineWeight;
+    };
+    bar: {
+      thickness: BarThickness;
+    };
+    donut: {
+      centerSpace: DonutCenterSpace;
+      segmentGap: DonutGap;
+    };
+    racingBar: {
+      playSpeed: PlaybackSpeed;
+    };
   };
 }
 
@@ -111,29 +164,29 @@ const themeMap: Record<
   }
 > = {
   classic: {
-    label: "기본 테마",
-    description: "차분하고 균형 잡힌 기본값입니다.",
-    colors: ["#845C46", "#A87050", "#C18E68", "#6E8B7A", "#496277", "#D1B49A"]
+    label: "스튜디오",
+    description: "짙은 슬레이트와 브론즈 톤으로 결과물을 또렷하게 정리합니다.",
+    colors: ["#304752", "#51707D", "#7D8E80", "#B0835B", "#CC9B74", "#D8C4AE"]
   },
   moss: {
-    label: "모스 테마",
-    description: "자연스럽고 안정적인 대비를 만듭니다.",
-    colors: ["#5E756A", "#7C9487", "#A0B0A6", "#C7C2B4", "#B08868", "#D0B299"]
+    label: "모스",
+    description: "자연스러운 온도감과 안정적인 명암으로 설명형 차트를 만듭니다.",
+    colors: ["#425D56", "#6D8579", "#91A597", "#A97A56", "#C99E77", "#D8CBB9"]
   },
   charcoal: {
-    label: "차콜 테마",
-    description: "또렷하고 명료한 발표용 대비를 만듭니다.",
-    colors: ["#30343B", "#55606E", "#8A7564", "#B89E8A", "#C8C2BB", "#6F7D88"]
+    label: "차콜",
+    description: "발표 슬라이드에 어울리는 선명한 대비와 무게 중심을 만듭니다.",
+    colors: ["#212B31", "#455B67", "#6D7E87", "#8E705E", "#BC9275", "#D8D0C5"]
   }
 };
 
 const inspectorTabs: Array<{ value: InspectorTab; label: string; description: string }> = [
-  { value: "data", label: "Data", description: "필드 연결" },
-  { value: "style", label: "Style", description: "톤과 색" },
-  { value: "axes", label: "Axes", description: "축 읽기" },
-  { value: "legend", label: "Legend", description: "범례" },
-  { value: "labels", label: "Labels", description: "내부 텍스트" },
-  { value: "layout", label: "Layout", description: "캔버스" }
+  { value: "data", label: "데이터", description: "필드 연결" },
+  { value: "style", label: "스타일", description: "톤과 텍스트" },
+  { value: "axes", label: "축/그리드", description: "읽기 구조" },
+  { value: "legend", label: "범례", description: "정보 레이어" },
+  { value: "labels", label: "라벨", description: "이름과 값" },
+  { value: "layout", label: "레이아웃", description: "캔버스" }
 ];
 
 const initialDraft: EditorDraftState = {
@@ -143,13 +196,17 @@ const initialDraft: EditorDraftState = {
     subtitle: "업로드한 열 구조를 바탕으로 추천된 필드 조합이 연결된 상태입니다",
     caption: "데이터 탭에서 어떤 열을 가로축, 값, 범례로 쓸지 고르면 중앙 결과와 추천 문구가 바로 바뀝니다."
   },
-  bindings: datasetPreview ? getRecommendedBindings(datasetPreview, "line") : { xFieldKey: null, valueFieldKey: null, seriesFieldKey: null, labelFieldKey: null },
+  bindings: getRecommendedBindings(previewQaDatasetMap.line.balanced, "line"),
   data: {
     sortMode: "original",
     topN: 4
   },
   style: {
     theme: "classic"
+  },
+  axes: {
+    showAxis: true,
+    showGrid: true
   },
   legend: {
     show: true,
@@ -159,14 +216,48 @@ const initialDraft: EditorDraftState = {
     mode: "both",
     density: "balanced",
     numberFormat: "number",
+    size: "md",
+    weight: "medium",
     prefix: "",
     suffix: ""
   },
   layout: {
     aspectRatio: "16:10",
     density: "balanced"
+  },
+  chartOptions: {
+    line: {
+      showPoints: true,
+      strokeWeight: "balanced"
+    },
+    bar: {
+      thickness: "balanced"
+    },
+    donut: {
+      centerSpace: "balanced",
+      segmentGap: "balanced"
+    },
+    racingBar: {
+      playSpeed: "normal"
+    }
   }
 };
+
+function getQaStateTopN(chartType: EditorChartType, state: PreviewQaState) {
+  if (chartType === "line") {
+    return 4;
+  }
+
+  if (state === "extreme") {
+    return chartType === "bar" ? 4 : 5;
+  }
+
+  if (state === "sparse") {
+    return 3;
+  }
+
+  return 4;
+}
 
 function cloneDraft(draft: EditorDraftState) {
   return JSON.parse(JSON.stringify(draft)) as EditorDraftState;
@@ -198,17 +289,95 @@ function buildTooltipSummary({
   return [eyebrow, label, value, detail].filter(Boolean).join(" · ");
 }
 
-function getVisibleTickIndexes(
-  totalCount: number,
-  density: LabelDensity,
-  chartType: "line" | "bar"
-) {
+function getRawLabelValue(value: string | number | boolean | null | undefined) {
+  if (value === null || value === undefined) {
+    return "비어 있음";
+  }
+
+  return String(value);
+}
+
+function getRawNumericValue(value: string | number | boolean | null | undefined) {
+  if (typeof value !== "number") {
+    return 0;
+  }
+
+  return Number.isFinite(value) ? value : 0;
+}
+
+function getAxisTargetCount({
+  totalCount,
+  density,
+  layoutDensity,
+  chartType,
+  longestLabelLength
+}: {
+  totalCount: number;
+  density: LabelDensity;
+  layoutDensity: DensityMode;
+  chartType: "line" | "bar";
+  longestLabelLength: number;
+}) {
+  let target =
+    chartType === "line"
+      ? density === "minimal"
+        ? 3
+        : density === "detailed"
+          ? 6
+          : 4
+      : density === "minimal"
+        ? 4
+        : density === "detailed"
+          ? 6
+          : 5;
+
+  if (layoutDensity === "compact") {
+    target -= 1;
+  }
+
+  if (layoutDensity === "comfortable") {
+    target += 1;
+  }
+
+  if (longestLabelLength >= 10) {
+    target -= 1;
+  }
+
+  if (longestLabelLength >= 16) {
+    target -= 1;
+  }
+
+  if (totalCount >= 8) {
+    target -= 1;
+  }
+
+  return clamp(target, chartType === "line" ? 2 : 3, 7);
+}
+
+function getAxisTickIndexes({
+  totalCount,
+  density,
+  layoutDensity,
+  chartType,
+  longestLabelLength
+}: {
+  totalCount: number;
+  density: LabelDensity;
+  layoutDensity: DensityMode;
+  chartType: "line" | "bar";
+  longestLabelLength: number;
+}) {
   if (totalCount <= 0) {
     return new Set<number>();
   }
 
-  const targetCount =
-    density === "detailed" ? totalCount : density === "minimal" ? (chartType === "line" ? 3 : 4) : chartType === "line" ? 4 : 5;
+  const targetCount = getAxisTargetCount({
+    totalCount,
+    density,
+    layoutDensity,
+    chartType,
+    longestLabelLength
+  });
   const step = Math.max(1, Math.ceil(totalCount / Math.max(targetCount, 1)));
   const indexes = new Set<number>();
 
@@ -221,6 +390,77 @@ function getVisibleTickIndexes(
   return indexes;
 }
 
+function getAxisLabelLimit({
+  totalCount,
+  density,
+  layoutDensity,
+  chartType,
+  longestLabelLength
+}: {
+  totalCount: number;
+  density: LabelDensity;
+  layoutDensity: DensityMode;
+  chartType: "line" | "bar";
+  longestLabelLength: number;
+}) {
+  let limit =
+    chartType === "line"
+      ? density === "detailed"
+        ? 9
+        : density === "minimal"
+          ? 7
+          : 8
+      : density === "detailed"
+        ? 11
+        : density === "minimal"
+          ? 8
+          : 9;
+
+  if (layoutDensity === "compact") {
+    limit -= 1;
+  }
+
+  if (layoutDensity === "comfortable") {
+    limit += 1;
+  }
+
+  if (totalCount <= 4) {
+    limit += 1;
+  }
+
+  if (longestLabelLength >= 18) {
+    limit -= 1;
+  }
+
+  return clamp(limit, 6, 14);
+}
+
+function getAxisValueTicks(maxValue: number, layoutDensity: DensityMode) {
+  const segmentCount = layoutDensity === "compact" ? 3 : 4;
+  return Array.from({ length: segmentCount + 1 }, (_, index) => {
+    const ratio = 1 - index / segmentCount;
+    return Math.round(maxValue * ratio);
+  });
+}
+
+function getAxisMinorTicks(ticks: number[]) {
+  const minorTicks: number[] = [];
+
+  for (let index = 0; index < ticks.length - 1; index += 1) {
+    minorTicks.push(Math.round((ticks[index] + ticks[index + 1]) / 2));
+  }
+
+  return minorTicks;
+}
+
+function formatAxisValue(value: number) {
+  if (value >= 10000) {
+    return new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  }
+
+  return formatNumber(value);
+}
+
 function getTopValueIndexes(values: number[], limit: number) {
   return new Set(
     values
@@ -229,6 +469,24 @@ function getTopValueIndexes(values: number[], limit: number) {
       .slice(0, Math.max(1, limit))
       .map((item) => item.index)
   );
+}
+
+function getPrioritySeriesIndexes(series: Array<{ values: number[] }>, limit: number) {
+  return new Set(
+    series
+      .map((item, index) => ({
+        index,
+        lastValue: item.values[item.values.length - 1] ?? 0,
+        maxValue: Math.max(...item.values, 0)
+      }))
+      .sort((a, b) => b.lastValue - a.lastValue || b.maxValue - a.maxValue)
+      .slice(0, Math.max(1, limit))
+      .map((item) => item.index)
+  );
+}
+
+function supportsExternalLegend(chartType: EditorChartType) {
+  return chartType === "line" || chartType === "bar";
 }
 
 function getLineLabelIndexes(values: number[], density: LabelDensity) {
@@ -409,6 +667,355 @@ function getDensityClasses(density: DensityMode) {
   return { shell: "p-6", canvas: "p-5", gap: "gap-4" };
 }
 
+function getLabelFontSize(size: LabelSize) {
+  if (size === "sm") {
+    return { text: 10, axis: 10, value: "text-[10px]" };
+  }
+
+  if (size === "lg") {
+    return { text: 12, axis: 12, value: "text-xs" };
+  }
+
+  return { text: 11, axis: 11, value: "text-[11px]" };
+}
+
+function getLabelFontWeight(weight: LabelWeight) {
+  if (weight === "regular") {
+    return { svg: 400, className: "font-normal" };
+  }
+
+  if (weight === "bold") {
+    return { svg: 700, className: "font-semibold" };
+  }
+
+  return { svg: 500, className: "font-medium" };
+}
+
+function getLineStrokeWidth(weight: LineWeight) {
+  if (weight === "thin") {
+    return 2.5;
+  }
+
+  if (weight === "bold") {
+    return 4.5;
+  }
+
+  return 3.5;
+}
+
+function getBarWidthClass(thickness: BarThickness) {
+  if (thickness === "slim") {
+    return "max-w-[34px]";
+  }
+
+  if (thickness === "bold") {
+    return "max-w-[60px]";
+  }
+
+  return "max-w-[46px]";
+}
+
+function getDonutInnerInset(centerSpace: DonutCenterSpace) {
+  if (centerSpace === "tight") {
+    return "20%";
+  }
+
+  if (centerSpace === "wide") {
+    return "30%";
+  }
+
+  return "24%";
+}
+
+function getDonutGapValue(gap: DonutGap) {
+  if (gap === "tight") {
+    return 0.6;
+  }
+
+  if (gap === "wide") {
+    return 1.6;
+  }
+
+  return 1;
+}
+
+function collectPreviewDiagnostics(
+  preview: NonNullable<typeof datasetPreview>,
+  chartType: EditorChartType,
+  bindings: FieldMappingBindings,
+  derivedData: ReturnType<typeof deriveChartData>
+): PreviewDataDiagnostics {
+  const xFieldKey = bindings.xFieldKey;
+  const seriesFieldKey = bindings.seriesFieldKey;
+  const labelSource =
+    chartType === "donut" || chartType === "racing-bar"
+      ? derivedData.items.map((item) => item.displayLabel)
+      : derivedData.categoryLabels;
+  const values =
+    chartType === "donut" || chartType === "racing-bar"
+      ? derivedData.items.map((item) => item.value)
+      : derivedData.series.flatMap((item) => item.values);
+  const positiveValues = values.filter((value) => value > 0);
+  const totalCategoryCount = xFieldKey
+    ? new Set(preview.sampleRows.map((row) => getRawLabelValue(row[xFieldKey]))).size
+    : 0;
+  const visibleCount =
+    chartType === "donut" || chartType === "racing-bar" ? derivedData.items.length : derivedData.categories.length;
+  const totalSeriesCount =
+    chartType === "line" || chartType === "bar"
+      ? seriesFieldKey && seriesFieldKey !== xFieldKey
+        ? Math.max(1, new Set(preview.sampleRows.map((row) => getRawLabelValue(row[seriesFieldKey]))).size)
+        : Math.max(1, derivedData.series.length)
+      : 1;
+  const maxValue = positiveValues.length > 0 ? Math.max(...positiveValues) : 0;
+  const minPositiveValue = positiveValues.length > 0 ? Math.min(...positiveValues) : 0;
+  const longestLabelLength = labelSource.reduce((max, label) => Math.max(max, label.length), 0);
+
+  return {
+    visibleCount,
+    totalCount: Math.max(totalCategoryCount, visibleCount),
+    hiddenCount: Math.max(0, totalCategoryCount - visibleCount),
+    totalSeriesCount,
+    longestLabelLength,
+    maxValue,
+    minPositiveValue,
+    nonZeroValueCount: positiveValues.length,
+    rangeRatio: minPositiveValue > 0 ? maxValue / minPositiveValue : maxValue > 0 ? Number.POSITIVE_INFINITY : 1,
+    dominantShare: positiveValues.length > 0 ? maxValue / Math.max(values.reduce((sum, value) => sum + Math.max(0, value), 0), 1) : 0
+  };
+}
+
+function getPreviewStateCopy({
+  chartType,
+  xLabel,
+  valueLabel,
+  diagnostics
+}: {
+  chartType: EditorChartType;
+  xLabel: string;
+  valueLabel: string;
+  diagnostics: PreviewDataDiagnostics;
+}): PreviewDataCopy {
+  const reasons: PreviewDataReason[] = [];
+  const isEmpty = diagnostics.visibleCount === 0 || diagnostics.nonZeroValueCount === 0;
+  const isSparse =
+    !isEmpty &&
+    (chartType === "line"
+      ? diagnostics.visibleCount <= 3 || diagnostics.nonZeroValueCount <= 3
+      : chartType === "bar"
+        ? diagnostics.visibleCount <= 2 || diagnostics.nonZeroValueCount <= 2
+        : chartType === "donut"
+          ? diagnostics.visibleCount <= 2 || diagnostics.nonZeroValueCount <= 2
+          : diagnostics.visibleCount <= 3 || diagnostics.nonZeroValueCount <= 3);
+  const hasTooManyItems =
+    chartType === "line"
+      ? diagnostics.hiddenCount >= 2
+      : chartType === "donut"
+        ? diagnostics.hiddenCount >= 2
+        : diagnostics.hiddenCount >= 3;
+  const hasLongLabels =
+    chartType === "racing-bar" ? diagnostics.longestLabelLength >= 18 : diagnostics.longestLabelLength >= 14;
+  const hasWideRange =
+    chartType === "donut"
+      ? diagnostics.dominantShare >= 0.62 || diagnostics.rangeRatio >= 8
+      : chartType === "line"
+        ? diagnostics.rangeRatio >= 16
+        : diagnostics.rangeRatio >= 12;
+  const hasTooManySeries =
+    (chartType === "line" || chartType === "bar") &&
+    diagnostics.totalSeriesCount >= (chartType === "line" ? 4 : 3);
+
+  if (hasTooManyItems) {
+    reasons.push("too-many-items");
+  }
+
+  if (hasLongLabels) {
+    reasons.push("long-labels");
+  }
+
+  if (hasWideRange) {
+    reasons.push("wide-range");
+  }
+
+  if (hasTooManySeries) {
+    reasons.push("too-many-series");
+  }
+  const chips = reasons.map((reason) => {
+    if (reason === "too-many-items") {
+      return `상위 ${diagnostics.visibleCount}개 우선`;
+    }
+
+    if (reason === "long-labels") {
+      return "긴 라벨 축약";
+    }
+
+    if (reason === "wide-range") {
+      return "값 편차 큼";
+    }
+
+    if (reason === "too-many-series") {
+      return `시리즈 ${diagnostics.totalSeriesCount}개`;
+    }
+
+    return "항목 수 적음";
+  });
+
+  if (isEmpty) {
+    if (chartType === "line") {
+      return {
+        state: "empty",
+        badge: "값 필요",
+        title: "추세를 그릴 값이 아직 연결되지 않았습니다.",
+        description: `${xLabel} 흐름은 보이지만 ${valueLabel} 값이 없어, 지금은 빈 상태를 먼저 또렷하게 안내합니다.`,
+        detail: "값 열을 다시 고르거나 비어 있는 행을 정리하면 선과 축이 같은 자리에서 바로 복구됩니다.",
+        chips: ["값 없음", "빈 상태 안내"]
+      };
+    }
+
+    if (chartType === "bar") {
+      return {
+        state: "empty",
+        badge: "값 필요",
+        title: "비교를 시작할 값이 아직 없습니다.",
+        description: `${xLabel} 기준 항목은 있지만 ${valueLabel} 값이 비어 있어, 막대 대신 정돈된 안내 상태를 보여주고 있습니다.`,
+        detail: "숫자 열이나 항목 기준을 다시 연결하면 비교 막대가 같은 레이아웃 안에서 바로 채워집니다.",
+        chips: ["항목 없음", "비교 대기"]
+      };
+    }
+
+    if (chartType === "donut") {
+      return {
+        state: "empty",
+        badge: "값 필요",
+        title: "구성 비중을 계산할 값이 아직 없습니다.",
+        description: `${xLabel} 항목은 있지만 ${valueLabel}가 비어 있어, 조각을 그리기보다 빈 구성을 먼저 안내하고 있습니다.`,
+        detail: "값이 들어오면 조각, 범례, 비중 안내가 같은 톤으로 함께 채워집니다.",
+        chips: ["비중 없음", "구성 대기"]
+      };
+    }
+
+    return {
+      state: "empty",
+      badge: "값 필요",
+      title: "순위를 계산할 값이 아직 없습니다.",
+      description: `${xLabel} 항목만 있고 ${valueLabel} 값이 없어, 막대 경주를 시작하지 않고 정돈된 대기 상태를 유지합니다.`,
+      detail: "값이 들어오면 상위 순위와 막대 길이를 같은 기준으로 다시 계산합니다.",
+      chips: ["순위 없음", "정렬 대기"]
+    };
+  }
+
+  if (isSparse) {
+    if (chartType === "line") {
+      return {
+        state: "sparse",
+        badge: "데이터 적음",
+        title: "포인트가 적어 흐름을 단정하기엔 이른 상태입니다.",
+        description: "지금은 확인 가능한 구간만 또렷하게 두고, 축 눈금도 과하게 늘리지 않도록 정리했습니다.",
+        detail: "기간 데이터가 더 쌓이면 추세선과 축 샘플링이 자동으로 자연스러운 밀도로 확장됩니다.",
+        chips: ["대표 구간만 표시", "추세 참고용"]
+      };
+    }
+
+    if (chartType === "bar") {
+      return {
+        state: "sparse",
+        badge: "데이터 적음",
+        title: "비교 가능한 항목이 아직 많지 않습니다.",
+        description: "지금은 핵심 막대만 먼저 읽히도록 두고, 축과 라벨은 과장되지 않게 눌러두었습니다.",
+        detail: "항목이 더 늘어나면 축 밀도와 범례 배치도 같은 제품 톤으로 함께 확장됩니다.",
+        chips: ["핵심 막대 중심", "비교 참고용"]
+      };
+    }
+
+    if (chartType === "donut") {
+      return {
+        state: "sparse",
+        badge: "데이터 적음",
+        title: "구성 항목이 적어 비중이 단순하게 보일 수 있습니다.",
+        description: "현재는 큰 조각과 총합을 또렷하게 보여주고, 불필요한 장식은 줄였습니다.",
+        detail: "구성 항목이 더 늘어나면 범례와 조각 강조도 밀도에 맞춰 자연스럽게 확장됩니다.",
+        chips: ["조각 수 적음", "구성 참고용"]
+      };
+    }
+
+    return {
+      state: "sparse",
+      badge: "데이터 적음",
+      title: "순위를 읽기엔 항목 수가 아직 적습니다.",
+      description: "지금은 상위 항목만 간결하게 보여주고, 막대 안 텍스트도 읽기 쉬운 수준으로 유지합니다.",
+      detail: "순위 후보가 더 늘어나면 상위권 강조와 막대 폭 분배도 자동으로 조정됩니다.",
+      chips: ["순위 후보 적음", "상위 결과 중심"]
+    };
+  }
+
+  if (reasons.length > 0) {
+    if (chartType === "line") {
+      return {
+        state: "extreme",
+        badge: "밀도 높음",
+        title: "핵심 흐름이 먼저 읽히도록 축과 라벨을 눌러두었습니다.",
+        description:
+          hasTooManyItems
+            ? `구간 수가 많아 대표 ${diagnostics.visibleCount}개 구간만 먼저 배치하고 있습니다.`
+            : "값 편차와 긴 라벨이 함께 있어, 작은 변화가 묻히지 않도록 축 위계를 다시 정리했습니다.",
+        detail: "전체 이름과 값은 툴팁에서 바로 확인할 수 있고, 기간을 더 잘게 나누거나 시리즈 수를 줄이면 읽기 밀도가 더 안정됩니다.",
+        chips
+      };
+    }
+
+    if (chartType === "bar") {
+      return {
+        state: "extreme",
+        badge: "밀도 높음",
+        title: "비교 우선순위를 유지하도록 축과 범례를 압축했습니다.",
+        description:
+          hasTooManyItems
+            ? `항목 수가 많아 상위 ${diagnostics.visibleCount}개 결과를 먼저 보여주고 있습니다.`
+            : "긴 항목명과 큰 값 편차가 함께 있어, 막대 본문보다 축과 범례가 앞서 보이지 않게 다듬었습니다.",
+        detail: "전체 항목을 모두 보려면 Top N을 넓히고, 비슷한 항목끼리 묶으면 비교가 더 또렷해집니다.",
+        chips
+      };
+    }
+
+    if (chartType === "donut") {
+      return {
+        state: "extreme",
+        badge: "밀도 높음",
+        title: "비중 읽기가 흐트러지지 않도록 대표 항목 중심으로 정리했습니다.",
+        description:
+          hasTooManyItems
+            ? `항목 수가 많아 상위 ${diagnostics.visibleCount}개 비중을 먼저 보여주고 있습니다.`
+            : diagnostics.dominantShare >= 0.62
+              ? "한 항목 비중이 매우 커서, 나머지 조각이 묻히지 않도록 범례와 요약 정보를 함께 정리했습니다."
+              : "긴 항목명과 큰 비중 차이를 함께 다루기 위해, 조각보다 보조 정보가 과하게 튀지 않도록 정돈했습니다.",
+        detail: "세부 항목을 묶거나 긴 이름을 정리하면 조각과 범례가 더 균형 있게 읽힙니다.",
+        chips
+      };
+    }
+
+    return {
+      state: "extreme",
+      badge: "밀도 높음",
+      title: "순위 읽기가 흐트러지지 않도록 상위 결과 중심으로 정리했습니다.",
+      description:
+        hasTooManyItems
+          ? `항목 수가 많아 상위 ${diagnostics.visibleCount}개 결과만 먼저 표시하고 있습니다.`
+          : "이름 길이와 값 편차를 함께 고려해, 막대 안 텍스트와 헤더 값을 분리해서 읽기 흐름을 지켰습니다.",
+      detail: "순위가 많은 경우 상위권만 먼저 보고, 긴 이름은 짧은 라벨로 정리하면 막대 경주가 훨씬 안정적으로 읽힙니다.",
+      chips
+    };
+  }
+
+  return {
+    state: "balanced",
+    badge: "안정적",
+    title: "지금 상태는 바로 공유해도 읽기 흐름이 안정적입니다.",
+    description: "축, 범례, 라벨을 과하게 줄이지 않아도 핵심 정보가 자연스럽게 먼저 읽힙니다.",
+    detail: "데이터 구조가 바뀌면 빈 상태, 데이터 적음, 밀도 높음 안내도 같은 제품 톤으로 이어집니다.",
+    chips: []
+  };
+}
+
 function getAspectRatioValue(aspectRatio: AspectRatio) {
   if (aspectRatio === "4:3") {
     return "4 / 3";
@@ -515,7 +1122,13 @@ function FlowStep({
   complete?: boolean;
 }) {
   return (
-    <div className={active ? "rounded-lg border border-line-accent bg-surface-1 px-4 py-4" : "rounded-lg border border-line-subtle bg-surface-1 px-4 py-4"}>
+    <div
+      className={
+        active
+          ? "rounded-2xl border border-line-accent bg-surface-1 px-4 py-4 shadow-soft"
+          : "rounded-2xl border border-line-subtle bg-surface-1/92 px-4 py-4"
+      }
+    >
       <div className="flex items-start gap-3">
         <span
           className={
@@ -556,8 +1169,9 @@ function InspectorSection({
       title={title}
       description={description}
       headerActions={badge ? <StatusBadge label={badge} tone="neutral" /> : null}
+      className="rounded-[24px] border-line-strong/70 bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(240,234,226,0.94))]"
     >
-      <div className="space-y-4">{children}</div>
+      <div className="space-y-3.5">{children}</div>
     </Card>
   );
 }
@@ -572,11 +1186,60 @@ function ControlGroup({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4">
-      <p className="text-sm font-medium text-ink-1">{title}</p>
-      <p className="mt-1 text-sm leading-6 text-ink-2">{description}</p>
+    <div className="rounded-[22px] border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,247,0.98),rgba(243,237,229,0.92))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)]">
+      <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{title}</p>
+      <p className="mt-1.5 text-[13px] leading-6 text-ink-2">{description}</p>
       <div className="mt-4 space-y-3">{children}</div>
     </div>
+  );
+}
+
+function QaStatePanel({
+  chartType,
+  state,
+  onChange,
+  datasetName
+}: {
+  chartType: EditorChartType;
+  state: PreviewQaState;
+  onChange: (state: PreviewQaState) => void;
+  datasetName: string;
+}) {
+  const options: PreviewQaState[] = ["balanced", "empty", "sparse", "extreme"];
+
+  return (
+    <Card
+      variant="subtle"
+      padding="compact"
+      title="검토용 상태 패널"
+      description="실제 제품 UI에는 노출되지 않는 로컬 QA 전용 전환입니다."
+      headerActions={<StatusBadge label={`${chartType} · ${previewQaStateLabelMap[state]}`} tone="neutral" />}
+    >
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-line-subtle bg-surface-1 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">현재 샘플</p>
+          <p className="mt-2 text-sm font-medium text-ink-1">{datasetName}</p>
+          <p className="mt-1 text-xs leading-5 text-ink-3">chart type별 상태 차이를 눈으로 확인할 수 있도록 로컬 샘플만 바꿔 보여줍니다.</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChange(option)}
+              className={
+                option === state
+                  ? "rounded-full border border-line-strong bg-surface-1 px-3 py-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-1"
+                  : "rounded-full border border-line-subtle bg-surface-1 px-3 py-1.5 text-[11px] tracking-[0.08em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
+              }
+            >
+              {previewQaStateLabelMap[option]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -592,8 +1255,8 @@ function SegmentedField<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
-      <p className="text-sm font-medium text-ink-1">{label}</p>
+    <div className="rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4">
+      <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -602,8 +1265,8 @@ function SegmentedField<T extends string>({
             onClick={() => onChange(option.value)}
             className={
               value === option.value
-                ? "rounded-full border border-line-accent bg-surface-2 px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-ink-1"
-                : "rounded-full border border-line-subtle bg-surface-1 px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
+                ? "rounded-full border border-line-accent bg-accent px-3.5 py-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-inverse shadow-soft"
+                : "rounded-full border border-line-subtle bg-surface-1 px-3.5 py-1.5 text-[11px] tracking-[0.08em] text-ink-3 transition hover:border-line-strong hover:text-ink-1"
             }
           >
             {option.label}
@@ -629,13 +1292,13 @@ function ToggleField({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-left transition hover:border-line-strong"
+      className="flex w-full items-center justify-between gap-4 rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4 text-left transition hover:border-line-strong"
     >
       <div>
-        <p className="text-sm font-medium text-ink-1">{label}</p>
-        <p className="mt-1 text-sm leading-6 text-ink-2">{description}</p>
+        <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
+        <p className="mt-1 text-[13px] leading-6 text-ink-2">{description}</p>
       </div>
-      <span className={checked ? "relative inline-flex h-7 w-12 rounded-full bg-accent" : "relative inline-flex h-7 w-12 rounded-full bg-surface-3"}>
+      <span className={checked ? "relative inline-flex h-7 w-12 rounded-full bg-accent shadow-soft" : "relative inline-flex h-7 w-12 rounded-full bg-surface-3"}>
         <span
           className={
             checked
@@ -662,10 +1325,10 @@ function RangeField({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
+    <div className="rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-ink-1">{label}</p>
-        <span className="rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-2">{value}개</span>
+        <p className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</p>
+        <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-2">{value}개</span>
       </div>
       <input
         className="mt-4 h-2 w-full accent-[rgb(132,92,70)]"
@@ -698,12 +1361,12 @@ function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-ink-2">{label}</span>
+      <span className="mb-2 block text-[13px] font-semibold tracking-[-0.02em] text-ink-2">{label}</span>
       <textarea
         rows={rows}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-sm border border-line-subtle bg-surface-1 px-4 py-3 text-sm leading-6 text-ink-1 outline-none transition placeholder:text-ink-3 focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
+        className="w-full rounded-md border border-line-subtle bg-surface-1 px-4 py-3 text-sm leading-6 text-ink-1 outline-none transition placeholder:text-ink-3 focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
       />
       {hint ? <span className="mt-2 block text-xs text-ink-3">{hint}</span> : null}
     </label>
@@ -726,16 +1389,16 @@ function SelectField({
   required?: boolean;
 }) {
   return (
-    <label className="block rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
+    <label className="block rounded-[20px] border border-line-subtle bg-surface-1/96 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-ink-1">{label}</span>
-        <span className="rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3">
+        <span className="text-[13px] font-semibold tracking-[-0.02em] text-ink-1">{label}</span>
+        <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-3">
           {required ? "필수" : "선택"}
         </span>
       </div>
-      <p className="mt-2 text-sm leading-6 text-ink-2">{hint}</p>
+      <p className="mt-2 text-[13px] leading-6 text-ink-2">{hint}</p>
       <select
-        className="mt-3 h-11 w-full rounded-sm border border-line-subtle bg-surface-1 px-4 text-sm text-ink-1 outline-none transition focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
+        className="mt-3 h-11 w-full rounded-md border border-line-subtle bg-surface-1 px-4 text-sm text-ink-1 outline-none transition focus:border-line-accent focus:ring-2 focus:ring-accent-soft/45"
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value || null)}
       >
@@ -928,27 +1591,179 @@ function SvgPointTooltip({
 function PreviewLegend({
   items,
   colors,
-  position
+  position,
+  density,
+  contextLabel
 }: {
   items: string[];
   colors: string[];
   position: LegendPosition;
+  density: DensityMode;
+  contextLabel: string;
 }) {
+  const longestLabelLength = items.reduce((max, item) => Math.max(max, item.length), 0);
+  const visibleCount =
+    position === "right"
+      ? density === "compact"
+        ? 5
+        : density === "comfortable"
+          ? 7
+          : 6
+      : density === "compact"
+        ? 4
+        : density === "comfortable"
+          ? 6
+          : 5;
+  const adjustedVisibleCount = clamp(visibleCount - (longestLabelLength >= 16 && position !== "right" ? 1 : 0), 3, 7);
+  const visibleItems = items.slice(0, adjustedVisibleCount);
+  const hiddenItems = items.slice(adjustedVisibleCount);
+  const containerClassName =
+    position === "right"
+      ? "rounded-2xl border border-line-subtle bg-surface-2/72 px-4 py-4"
+      : position === "top"
+        ? "rounded-xl border border-line-subtle/80 bg-surface-2/68 px-4 py-3"
+        : "rounded-xl border border-line-subtle/80 bg-surface-2/72 px-4 py-4";
+  const listClassName =
+    position === "right"
+      ? "grid gap-2"
+      : position === "top"
+        ? "flex flex-wrap gap-2.5"
+        : "flex flex-wrap gap-3";
+  const itemClassName =
+    position === "right"
+      ? "flex min-w-0 items-center gap-2 rounded-md border border-line-subtle/80 bg-surface-1/95 px-3 py-2.5"
+      : "flex min-w-0 items-center gap-2 rounded-full border border-line-subtle/80 bg-surface-1/95 px-3 py-2";
+  const labelLimit =
+    position === "right" ? (density === "comfortable" ? 22 : 18) : density === "comfortable" ? 16 : 13;
+
   return (
-    <div className={position === "right" ? "grid gap-2" : "flex flex-wrap gap-3"}>
-      {items.map((item, index) => (
-        <div
-          key={`${item}-${position}`}
-          className={
-            position === "right"
-              ? "flex min-w-0 items-center gap-2 rounded-md border border-line-subtle bg-surface-1 px-3 py-2"
-              : "flex min-w-0 items-center gap-2 rounded-full border border-line-subtle bg-surface-1 px-3 py-2"
-          }
-        >
-          <span className="size-2.5 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
-          <PreviewTooltip eyebrow="범례" label={item} detail="색으로 구분되는 항목입니다." align={position === "right" ? "left" : "center"}>
-            <span className="truncate text-sm text-ink-1">{truncateLabel(item, position === "right" ? 18 : 14)}</span>
+    <div className={containerClassName}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">범례</p>
+          <p className="mt-1 text-xs text-ink-2">{contextLabel === "없음" ? "색상으로 구분된 항목" : `${contextLabel} 기준 구분`}</p>
+        </div>
+        <span className="rounded-full border border-line-subtle/80 bg-surface-1 px-2.5 py-1 text-[10px] tracking-[0.12em] text-ink-3">
+          항목 {items.length}개
+        </span>
+      </div>
+
+      <div className={listClassName}>
+        {visibleItems.map((item, index) => (
+          <div key={`${item}-${position}`} className={itemClassName}>
+            <span className="size-2 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+            <PreviewTooltip eyebrow="범례" label={item} detail="색으로 구분되는 항목입니다." align={position === "right" ? "left" : "center"}>
+              <span className="truncate text-[13px] leading-5 text-ink-2">{truncateLabel(item, labelLimit)}</span>
+            </PreviewTooltip>
+          </div>
+        ))}
+
+        {hiddenItems.length > 0 ? (
+          <PreviewTooltip
+            eyebrow="범례 요약"
+            label={`추가 항목 ${hiddenItems.length}개`}
+            detail={hiddenItems.slice(0, 4).join(", ")}
+            align={position === "right" ? "left" : "center"}
+          >
+            <div className={cx(itemClassName, "border-dashed bg-surface-1/80")}>
+              <span className="size-2 rounded-full bg-line-strong" />
+              <span className="truncate text-[13px] leading-5 text-ink-3">+{hiddenItems.length}개 더</span>
+            </div>
           </PreviewTooltip>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PreviewStateNotice({
+  copy,
+  chartType,
+  compact = false
+}: {
+  copy: PreviewDataCopy;
+  chartType: EditorChartType;
+  compact?: boolean;
+}) {
+  const chipToneClassName = copy.state === "sparse" ? "border-line-strong/70 text-ink-2" : "border-line-strong text-ink-2";
+
+  return (
+    <div
+      className={
+        compact
+          ? "rounded-xl border border-line-subtle bg-surface-2/88 px-4 py-4"
+          : "flex h-full items-center justify-center rounded-[26px] border border-dashed border-line-strong/80 bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(242,237,230,0.92))] px-8 py-10 shadow-inset"
+      }
+    >
+      <div className={compact ? "min-w-0 max-w-3xl" : "mx-auto max-w-xl text-center"}>
+        <div className={compact ? "min-w-0" : ""}>
+          <div className={compact ? "flex items-center gap-2" : "flex flex-col items-center"}>
+            {!compact ? <PreviewStateGlyph chartType={chartType} /> : null}
+            <span className="rounded-full border border-line-subtle bg-surface-1 px-3 py-1 text-[10px] tracking-[0.14em] text-ink-3">
+              {copy.badge}
+            </span>
+          </div>
+          <p className={compact ? "mt-3 text-sm font-medium text-ink-1" : "mt-4 text-lg font-semibold text-ink-1"}>{copy.title}</p>
+          <p className={compact ? "mt-2 text-sm leading-6 text-ink-2" : "mt-3 text-sm leading-6 text-ink-2"}>{copy.description}</p>
+        </div>
+        {copy.chips.length > 0 ? (
+          <div className={cx("flex flex-wrap gap-2", compact ? "mt-3" : "mt-4 justify-center")}>
+            {copy.chips.map((chip) => (
+              <span
+                key={chip}
+                className={cx(
+                  "rounded-full border bg-surface-1 px-2.5 py-1 text-[10px] tracking-[0.12em]",
+                  chipToneClassName
+                )}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <div className={compact ? "mt-3 rounded-lg border border-line-subtle bg-surface-1/90 px-4 py-3" : "mt-5 rounded-lg border border-line-subtle bg-surface-1/92 px-4 py-4 text-left"}>
+          <p className="text-sm leading-6 text-ink-2">{copy.detail}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewStateGlyph({ chartType }: { chartType: EditorChartType }) {
+  if (chartType === "line") {
+    return (
+      <div className="relative h-12 w-20">
+        <span className="absolute inset-x-1 bottom-2 border-t border-dashed border-line-strong/60" />
+        <span className="absolute left-2 bottom-4 size-2 rounded-full bg-line-strong/70" />
+        <span className="absolute left-8 bottom-7 size-2 rounded-full bg-line-strong/70" />
+        <span className="absolute right-3 bottom-5 size-2 rounded-full bg-line-strong/70" />
+        <span className="absolute left-[10px] right-[16px] top-[15px] border-t border-line-strong/60" style={{ transform: "rotate(-12deg)" }} />
+      </div>
+    );
+  }
+
+  if (chartType === "bar") {
+    return (
+      <div className="flex h-12 w-20 items-end justify-center gap-2">
+        <span className="w-3 rounded-t-sm bg-line-strong/55" style={{ height: "42%" }} />
+        <span className="w-3 rounded-t-sm bg-line-strong/65" style={{ height: "74%" }} />
+        <span className="w-3 rounded-t-sm bg-line-strong/55" style={{ height: "58%" }} />
+      </div>
+    );
+  }
+
+  if (chartType === "donut") {
+    return <div className="h-14 w-14 rounded-full border-[10px] border-line-strong/60 border-t-accent/60" />;
+  }
+
+  return (
+    <div className="grid h-12 w-24 gap-2">
+      {[52, 74, 63].map((width, index) => (
+        <div key={width} className="flex items-center gap-2">
+          <span className="inline-flex size-5 items-center justify-center rounded-full border border-line-subtle bg-surface-1 text-[10px] text-ink-3">
+            {index + 1}
+          </span>
+          <span className="h-2 rounded-full bg-line-strong/65" style={{ width: `${width}%` }} />
         </div>
       ))}
     </div>
@@ -961,7 +1776,12 @@ function LineChart({
   series,
   colors,
   totalValue,
-  labels
+  labels,
+  axes,
+  lineOptions,
+  layoutDensity,
+  xAxisLabel,
+  valueAxisLabel
 }: {
   categories: string[];
   categoryLabels: string[];
@@ -969,16 +1789,43 @@ function LineChart({
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  axes: EditorDraftState["axes"];
+  lineOptions: EditorDraftState["chartOptions"]["line"];
+  layoutDensity: DensityMode;
+  xAxisLabel: string;
+  valueAxisLabel: string;
 }) {
   const maxValue = Math.max(1, ...series.flatMap((item) => item.values));
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const combinedValues = categories.map((_, index) => series.reduce((sum, currentSeries) => sum + (currentSeries.values[index] ?? 0), 0));
   const highlightedIndexes = getLineLabelIndexes(combinedValues, labels.density);
+  const longestLabelLength = categoryLabels.reduce((max, label) => Math.max(max, label.length), 0);
   const axisLabelIndexes = new Set([
-    ...getVisibleTickIndexes(categories.length, labels.density, "line"),
+    ...getAxisTickIndexes({
+      totalCount: categories.length,
+      density: labels.density,
+      layoutDensity,
+      chartType: "line",
+      longestLabelLength
+    }),
     ...Array.from(highlightedIndexes)
   ]);
+  const axisLabelLimit = getAxisLabelLimit({
+    totalCount: categories.length,
+    density: labels.density,
+    layoutDensity,
+    chartType: "line",
+    longestLabelLength
+  });
+  const yTicks = getAxisValueTicks(maxValue, layoutDensity);
+  const minorTicks = getAxisMinorTicks(yTicks);
+  const chartLeft = 72;
+  const chartRight = 584;
+  const chartTop = 42;
+  const chartBottom = 232;
+  const chartWidth = chartRight - chartLeft;
+  const chartHeight = chartBottom - chartTop;
   const dominantSeriesByIndex = categories.map((_, categoryIndex) =>
     series.reduce(
       (bestIndex, currentSeries, seriesIndex) =>
@@ -986,25 +1833,65 @@ function LineChart({
       0
     )
   );
+  const lastPointPrioritySeriesIndexes = getPrioritySeriesIndexes(
+    series,
+    series.length >= 5 ? 2 : series.length >= 4 ? 3 : series.length
+  );
+  const labelFont = getLabelFontSize(labels.size);
+  const labelWeight = getLabelFontWeight(labels.weight);
+  const strokeWidth = getLineStrokeWidth(lineOptions.strokeWeight);
 
   return (
-    <div className="h-full rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-4 pb-4 pt-6">
+    <div className="chart-paper h-full rounded-[26px] border border-line-strong/75 px-5 pb-5 pt-6 shadow-inset">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">값 축</p>
+          <p className="mt-1 text-sm text-ink-2">{valueAxisLabel}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">가로축</p>
+          <p className="mt-1 text-sm text-ink-2">{xAxisLabel}</p>
+        </div>
+      </div>
       <svg viewBox="0 0 620 280" className="h-full min-h-[260px] w-full">
-        {[0, 1, 2, 3].map((line) => (
-          <line
-            key={line}
-            x1="24"
-            x2="590"
-            y1={52 + line * 55}
-            y2={52 + line * 55}
-            stroke="rgba(183,173,161,0.25)"
-            strokeDasharray="4 6"
-          />
-        ))}
+        {axes.showGrid &&
+          minorTicks.map((tick) => {
+          const y = chartBottom - (tick / maxValue) * chartHeight;
+
+          return (
+            <line
+              key={`line-minor-${tick}`}
+              x1={chartLeft}
+              x2={chartRight}
+              y1={y}
+              y2={y}
+              stroke="rgba(183,173,161,0.12)"
+              strokeDasharray="2 8"
+            />
+          );
+        })}
+        {axes.showGrid &&
+          yTicks.map((tick) => {
+          const y = chartBottom - (tick / maxValue) * chartHeight;
+
+          return (
+            <g key={`line-major-${tick}`}>
+              <line x1={chartLeft} x2={chartRight} y1={y} y2={y} stroke="rgba(183,173,161,0.24)" strokeDasharray="4 6" />
+              {axes.showAxis ? <line x1={chartLeft - 6} x2={chartLeft} y1={y} y2={y} stroke="rgba(183,173,161,0.4)" /> : null}
+              {axes.showAxis ? (
+                <text x={chartLeft - 10} y={y + 4} textAnchor="end" fontSize={labelFont.axis} fill="#8A8780">
+                {formatAxisValue(tick)}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
+        {axes.showAxis ? <line x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartBottom} stroke="rgba(183,173,161,0.34)" /> : null}
+        {axes.showAxis ? <line x1={chartLeft} x2={chartRight} y1={chartBottom} y2={chartBottom} stroke="rgba(183,173,161,0.36)" /> : null}
         {series.map((currentSeries, seriesIndex) => {
           const points = currentSeries.values.map((value, index) => {
-            const x = (index / Math.max(categories.length - 1, 1)) * 540 + 34;
-            const y = 232 - (value / maxValue) * 172;
+            const x = (index / Math.max(categories.length - 1, 1)) * chartWidth + chartLeft;
+            const y = chartBottom - (value / maxValue) * chartHeight;
             return { x, y, value };
           });
 
@@ -1013,8 +1900,16 @@ function LineChart({
               <path
                 d={`M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`}
                 fill="none"
+                stroke="rgba(255,255,255,0.62)"
+                strokeWidth={strokeWidth + 3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d={`M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`}
+                fill="none"
                 stroke={colors[seriesIndex % colors.length]}
-                strokeWidth="4"
+                strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -1025,9 +1920,11 @@ function LineChart({
                 const tooltipId = `line-point-tooltip-${seriesIndex}-${pointIndex}`;
                 const isLastPoint = pointIndex === points.length - 1;
                 const isDominantSeries = dominantSeriesByIndex[pointIndex] === seriesIndex;
+                const shouldShowLastPointLabel =
+                  series.length <= 3 || labels.density === "detailed" || lastPointPrioritySeriesIndexes.has(seriesIndex);
                 const showPointLabel =
                   labels.mode !== "hidden" &&
-                  (isLastPoint || highlightedIndexes.has(pointIndex)) &&
+                  ((isLastPoint && shouldShowLastPointLabel) || (!isLastPoint && highlightedIndexes.has(pointIndex))) &&
                   (series.length === 1 || isLastPoint || isDominantSeries || labels.density === "detailed");
                 const labelOffset =
                   point.y < 86 ? 18 : series.length > 1 && !isLastPoint ? (seriesIndex % 2 === 0 ? -14 : 18) : -14;
@@ -1057,9 +1954,16 @@ function LineChart({
                       strokeWidth="2"
                       className="opacity-0 transition-opacity duration-100 group-focus-within:opacity-100"
                     />
-                    <circle cx={point.x} cy={point.y} r="5" fill={colors[seriesIndex % colors.length]} />
+                    {lineOptions.showPoints ? <circle cx={point.x} cy={point.y} r="4.5" fill={colors[seriesIndex % colors.length]} /> : null}
                     {showPointLabel ? (
-                      <text x={point.x} y={clamp(point.y + labelOffset, 20, 248)} textAnchor="middle" fontSize="10.5" fill="#4C4D53">
+                      <text
+                        x={point.x}
+                        y={clamp(point.y + labelOffset, 20, 248)}
+                        textAnchor="middle"
+                        fontSize={labelFont.text}
+                        fontWeight={labelWeight.svg}
+                        fill="#5D5A54"
+                      >
                         {truncateLabel(labelText, showName && showValue ? 18 : 12)}
                       </text>
                     ) : null}
@@ -1080,14 +1984,22 @@ function LineChart({
           );
         })}
         {categories.map((label, index) => {
-          const x = (index / Math.max(categories.length - 1, 1)) * 540 + 34;
+          if (!axes.showAxis) {
+            return null;
+          }
+
+          const x = (index / Math.max(categories.length - 1, 1)) * chartWidth + chartLeft;
+
           return (
             <g key={label}>
-              <line x1={x} x2={x} y1="240" y2="246" stroke="rgba(183,173,161,0.35)" />
+              <line x1={x} x2={x} y1={chartBottom} y2={chartBottom + (axisLabelIndexes.has(index) ? 7 : 4)} stroke="rgba(183,173,161,0.32)" />
               {axisLabelIndexes.has(index) ? (
-                <text x={x} y="264" textAnchor="middle" fontSize="12" fill="#7A7B82">
-                  {truncateLabel(categoryLabels[index] ?? label, categories.length > 5 ? 8 : 10)}
-                </text>
+                <g>
+                  <title>{categoryLabels[index] ?? label}</title>
+                  <text x={x} y="255" textAnchor="middle" fontSize={labelFont.axis} fill="#7E7B75">
+                    {truncateLabel(categoryLabels[index] ?? label, axisLabelLimit)}
+                  </text>
+                </g>
               ) : null}
             </g>
           );
@@ -1103,7 +2015,12 @@ function BarChart({
   series,
   colors,
   totalValue,
-  labels
+  labels,
+  axes,
+  barOptions,
+  layoutDensity,
+  xAxisLabel,
+  valueAxisLabel
 }: {
   categories: string[];
   categoryLabels: string[];
@@ -1111,16 +2028,37 @@ function BarChart({
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  axes: EditorDraftState["axes"];
+  barOptions: EditorDraftState["chartOptions"]["bar"];
+  layoutDensity: DensityMode;
+  xAxisLabel: string;
+  valueAxisLabel: string;
 }) {
   const maxValue = Math.max(1, ...series.flatMap((item) => item.values));
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, categories.length, "bar");
+  const longestLabelLength = categoryLabels.reduce((max, label) => Math.max(max, label.length), 0);
   const categoryTotals = categories.map((_, categoryIndex) =>
     series.reduce((sum, currentSeries) => sum + (currentSeries.values[categoryIndex] ?? 0), 0)
   );
   const priorityCategoryIndexes = getTopValueIndexes(categoryTotals, labelLimit);
-  const axisLabelIndexes = getVisibleTickIndexes(categories.length, labels.density, "bar");
+  const axisLabelIndexes = getAxisTickIndexes({
+    totalCount: categories.length,
+    density: labels.density,
+    layoutDensity,
+    chartType: "bar",
+    longestLabelLength
+  });
+  const axisLabelLimit = getAxisLabelLimit({
+    totalCount: categories.length,
+    density: labels.density,
+    layoutDensity,
+    chartType: "bar",
+    longestLabelLength
+  });
+  const yTicks = getAxisValueTicks(maxValue, layoutDensity);
+  const minorTicks = getAxisMinorTicks(yTicks);
   const dominantSeriesByCategory = categories.map((_, categoryIndex) =>
     series.reduce(
       (bestIndex, currentSeries, seriesIndex) =>
@@ -1128,85 +2066,146 @@ function BarChart({
       0
     )
   );
+  const labelFont = getLabelFontSize(labels.size);
+  const labelWeight = getLabelFontWeight(labels.weight);
 
   return (
-    <div className="grid h-full min-h-[260px] grid-cols-[repeat(auto-fit,minmax(0,1fr))] items-end gap-4 rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-5 pb-5 pt-10">
-      {categories.map((category, categoryIndex) => {
-        const axisLabel = categoryLabels[categoryIndex] ?? category;
-        const showAxisLabel = axisLabelIndexes.has(categoryIndex);
+    <div className="chart-paper rounded-[26px] border border-line-strong/75 px-5 pb-5 pt-6 shadow-inset">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">값 축</p>
+          <p className="mt-1 text-sm text-ink-2">{valueAxisLabel}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">가로축</p>
+          <p className="mt-1 text-sm text-ink-2">{xAxisLabel}</p>
+        </div>
+      </div>
 
-        return (
-        <div key={category} className="flex h-full flex-col justify-end">
-          <div className="flex h-full items-end justify-center gap-2">
-            {series.map((currentSeries, seriesIndex) => {
-              const currentValue = currentSeries.values[categoryIndex] ?? 0;
-              const barHeight = Math.max(18, (currentValue / maxValue) * 220);
-              const isPriorityCategory = priorityCategoryIndexes.has(categoryIndex);
-              const canHighlightBar =
-                labels.density === "detailed" || series.length === 1 || dominantSeriesByCategory[categoryIndex] === seriesIndex;
-              const shouldShowBarName = labels.mode !== "hidden" && showName && isPriorityCategory && canHighlightBar && (!showAxisLabel || series.length > 1);
-              const shouldShowBarValue =
-                labels.mode !== "hidden" &&
-                showValue &&
-                isPriorityCategory &&
-                canHighlightBar &&
-                (barHeight >= (shouldShowBarName ? 52 : 34) || labels.density === "detailed");
+      <div className="grid grid-cols-[52px_minmax(0,1fr)] gap-3">
+        <div className="relative h-[220px]">
+          {axes.showAxis &&
+            yTicks.map((tick) => {
+            const top = `${(1 - tick / maxValue) * 100}%`;
+
+            return (
+              <span
+                key={`bar-axis-${tick}`}
+                className="absolute right-0 -translate-y-1/2 text-[11px] text-ink-3"
+                style={{ top }}
+              >
+                {formatAxisValue(tick)}
+              </span>
+            );
+          })}
+        </div>
+
+        <div className="relative min-w-0">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[220px]">
+            {axes.showGrid &&
+              minorTicks.map((tick) => {
+              const top = `${(1 - tick / maxValue) * 100}%`;
 
               return (
-              <div key={`${category}-${currentSeries.label}`} className="flex h-full w-full max-w-[46px] flex-col justify-end">
-                {shouldShowBarName || shouldShowBarValue ? (
-                  <div className="mb-2 text-center text-[11px] leading-4 text-ink-2">
-                    {shouldShowBarName ? (
-                      <PreviewTooltip
-                        eyebrow="막대 라벨"
-                        label={axisLabel}
-                        value={showValue ? formatLabelValue(currentValue, labels, totalValue) : undefined}
-                        detail={series.length > 1 ? currentSeries.label : "막대 끝에 표시되는 항목입니다."}
-                      >
-                        <span className="block truncate font-medium text-ink-1">{truncateLabel(axisLabel, 10)}</span>
-                      </PreviewTooltip>
-                    ) : null}
-                    {shouldShowBarValue ? (
-                      <PreviewTooltip
-                        eyebrow="값"
-                        label={formatLabelValue(currentValue, labels, totalValue)}
-                        detail={axisLabel}
-                      >
-                        <span className="block">{formatLabelValue(currentValue, labels, totalValue)}</span>
-                      </PreviewTooltip>
-                    ) : null}
-                  </div>
-                ) : null}
-                <PreviewTooltip
-                  eyebrow={series.length > 1 ? currentSeries.label : "막대"}
-                  label={axisLabel}
-                  value={formatLabelValue(currentValue, labels, totalValue)}
-                  detail={series.length > 1 ? `${currentSeries.label} 기준 비교 막대` : "값 비교를 위한 막대입니다."}
-                  wrapperClassName="flex h-full w-full"
-                  triggerClassName="flex h-full w-full items-end rounded-t-md"
-                >
-                  <span
-                    className="block w-full rounded-t-md"
-                    style={{
-                      height: `${barHeight}px`,
-                      backgroundColor: colors[seriesIndex % colors.length]
-                    }}
-                  />
-                </PreviewTooltip>
-              </div>
-            )})}
+                <span
+                  key={`bar-minor-${tick}`}
+                  className="absolute inset-x-0 border-t border-dashed border-line-subtle/60"
+                  style={{ top }}
+                />
+              );
+            })}
+            {axes.showGrid &&
+              yTicks.map((tick) => {
+              const top = `${(1 - tick / maxValue) * 100}%`;
+
+              return (
+                <span key={`bar-major-${tick}`} className="absolute inset-x-0 border-t border-line-subtle/80" style={{ top }} />
+              );
+            })}
           </div>
-          {showAxisLabel ? (
-            <PreviewTooltip eyebrow="축 라벨" label={axisLabel} detail="가로축에서 항목을 구분합니다.">
-              <span className="mt-3 block truncate text-center text-sm text-ink-2">
-                {truncateLabel(axisLabel, categories.length > 5 ? 9 : 11)}
-              </span>
-            </PreviewTooltip>
-          ) : (
-            <span className="mt-3 block h-5" aria-hidden="true" />
-          )}
+
+          <div
+            className="grid min-h-[260px] items-end gap-4"
+            style={{ gridTemplateColumns: `repeat(${Math.max(categories.length, 1)}, minmax(0, 1fr))` }}
+          >
+            {categories.map((category, categoryIndex) => {
+              const axisLabel = categoryLabels[categoryIndex] ?? category;
+              const showAxisLabel = axisLabelIndexes.has(categoryIndex);
+
+              return (
+                <div key={category} className="flex h-full min-w-0 flex-col justify-end">
+                  <div className="flex h-[220px] items-end justify-center gap-2">
+                    {series.map((currentSeries, seriesIndex) => {
+                      const currentValue = currentSeries.values[categoryIndex] ?? 0;
+                      const barHeight = Math.max(16, (currentValue / maxValue) * 192);
+                      const isPriorityCategory = priorityCategoryIndexes.has(categoryIndex);
+                      const canHighlightBar =
+                        labels.density === "detailed" || series.length === 1 || dominantSeriesByCategory[categoryIndex] === seriesIndex;
+                      const shouldShowBarName =
+                        labels.mode !== "hidden" && showName && isPriorityCategory && canHighlightBar && (!showAxisLabel || series.length > 1);
+                      const shouldShowBarValue =
+                        labels.mode !== "hidden" &&
+                        showValue &&
+                        isPriorityCategory &&
+                        canHighlightBar &&
+                        (barHeight >= (shouldShowBarName ? 52 : 34) || labels.density === "detailed");
+
+                      return (
+                        <div key={`${category}-${currentSeries.label}`} className={cx("flex h-full w-full flex-col justify-end", getBarWidthClass(barOptions.thickness))}>
+                          {shouldShowBarName || shouldShowBarValue ? (
+                            <div className={cx("mb-2 text-center leading-4 text-ink-2", labelFont.value, labelWeight.className)}>
+                              {shouldShowBarName ? (
+                                <PreviewTooltip
+                                  eyebrow="막대 라벨"
+                                  label={axisLabel}
+                                  value={showValue ? formatLabelValue(currentValue, labels, totalValue) : undefined}
+                                  detail={series.length > 1 ? currentSeries.label : "막대 끝에 표시되는 항목입니다."}
+                                >
+                                  <span className="block truncate font-medium text-ink-1">{truncateLabel(axisLabel, 10)}</span>
+                                </PreviewTooltip>
+                              ) : null}
+                              {shouldShowBarValue ? (
+                                <PreviewTooltip eyebrow="값" label={formatLabelValue(currentValue, labels, totalValue)} detail={axisLabel}>
+                                  <span className="block">{formatLabelValue(currentValue, labels, totalValue)}</span>
+                                </PreviewTooltip>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          <PreviewTooltip
+                            eyebrow={series.length > 1 ? currentSeries.label : "막대"}
+                            label={axisLabel}
+                            value={formatLabelValue(currentValue, labels, totalValue)}
+                            detail={series.length > 1 ? `${currentSeries.label} 기준 비교 막대` : "값 비교를 위한 막대입니다."}
+                            wrapperClassName="flex h-full w-full"
+                            triggerClassName="flex h-full w-full items-end rounded-t-md"
+                          >
+                            <span
+                              className="block w-full rounded-t-[14px] border border-white/25"
+                              style={{
+                                height: `${barHeight}px`,
+                                background: `linear-gradient(180deg, ${colors[seriesIndex % colors.length]}, rgba(48,71,82,0.9))`
+                              }}
+                            />
+                          </PreviewTooltip>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {showAxisLabel && axes.showAxis ? (
+                    <PreviewTooltip eyebrow="축 라벨" label={axisLabel} detail="가로축에서 항목을 구분합니다.">
+                      <span className={cx("mt-3 block truncate text-center leading-5 text-ink-2", labelWeight.className, labelFont.value)}>
+                        {truncateLabel(axisLabel, axisLabelLimit)}
+                      </span>
+                    </PreviewTooltip>
+                  ) : (
+                    <span className="mt-3 block h-10" aria-hidden="true" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      )})}
+      </div>
     </div>
   );
 }
@@ -1214,30 +2213,40 @@ function BarChart({
 function DonutChart({
   items,
   colors,
-  labels
+  labels,
+  donutOptions
 }: {
   items: Array<{ label: string; displayLabel: string; value: number }>;
   colors: string[];
   labels: EditorDraftState["labels"];
+  donutOptions: EditorDraftState["chartOptions"]["donut"];
 }) {
   const total = Math.max(1, items.reduce((sum, item) => sum + item.value, 0));
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, items.length, "donut");
   const priorityIndexes = getTopValueIndexes(items.map((item) => item.value), labelLimit);
+  const gapValue = getDonutGapValue(donutOptions.segmentGap);
+  const innerInset = getDonutInnerInset(donutOptions.centerSpace);
+  const labelWeight = getLabelFontWeight(labels.weight);
+  const labelFont = getLabelFontSize(labels.size);
   let current = 0;
-  const segments = items.map((item, index) => {
+  const segments = items.flatMap((item, index) => {
     const percentage = (item.value / total) * 100;
     const start = current;
     current += percentage;
-    return `${colors[index % colors.length]} ${start}% ${current}%`;
+    const colorEnd = Math.max(start, current - gapValue);
+    return [
+      `${colors[index % colors.length]} ${start}% ${colorEnd}%`,
+      `rgb(250 247 242) ${colorEnd}% ${current}%`
+    ];
   });
 
   return (
-    <div className="grid h-full min-h-[260px] gap-6 rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-6 py-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-center">
+    <div className="chart-paper grid h-full min-h-[260px] gap-6 rounded-[26px] border border-line-strong/75 px-6 py-6 shadow-inset lg:grid-cols-[240px_minmax(0,1fr)] lg:items-center">
       <div className="flex justify-center">
-        <div className="relative size-52 rounded-full" style={{ background: `conic-gradient(${segments.join(", ")})` }}>
-          <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full bg-surface-1">
+        <div className="relative size-52 rounded-full shadow-soft" style={{ background: `conic-gradient(${segments.join(", ")})` }}>
+          <div className="absolute flex flex-col items-center justify-center rounded-full bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(244,239,231,0.94))]" style={{ inset: innerInset }}>
             <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">총합</span>
             <span className="mt-2 text-xl font-semibold text-ink-1">{formatNumber(total)}</span>
             {labels.mode !== "hidden" ? (
@@ -1257,7 +2266,7 @@ function DonutChart({
           <div
             key={item.label}
             className={cx(
-              "rounded-md border border-line-subtle bg-surface-1 px-4 py-3",
+              "rounded-[16px] border border-line-subtle bg-surface-1 px-4 py-3",
               isPriority ? "border-line-strong shadow-soft" : null
             )}
           >
@@ -1271,13 +2280,13 @@ function DonutChart({
                   detail={`${share}% 비중`}
                   align="left"
                 >
-                  <span className="max-w-[150px] truncate text-sm font-medium text-ink-1">
+                  <span className={cx("max-w-[150px] truncate text-sm text-ink-1", labelWeight.className)}>
                     {truncateLabel(showName ? item.displayLabel : item.label, 18)}
                   </span>
                 </PreviewTooltip>
               </div>
               {labels.mode !== "hidden" && showValue && (isPriority || labels.density === "detailed") ? (
-                <span className={isPriority ? "text-sm font-medium text-ink-1" : "text-sm text-ink-2"}>
+                <span className={cx(isPriority ? "text-sm text-ink-1" : "text-sm text-ink-2", labelWeight.className, labelFont.value)}>
                   {formatLabelValue(item.value, labels, total)}
                 </span>
               ) : null}
@@ -1298,21 +2307,33 @@ function RacingBarChart({
   items,
   colors,
   totalValue,
-  labels
+  labels,
+  racingBarOptions
 }: {
   items: Array<{ label: string; displayLabel: string; value: number }>;
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  racingBarOptions: EditorDraftState["chartOptions"]["racingBar"];
 }) {
   const maxValue = Math.max(1, ...items.map((item) => item.value));
   const showName = shouldShowLabelName(labels.mode);
   const showValue = shouldShowLabelValue(labels.mode);
   const labelLimit = getChartLabelLimit(labels.density, items.length, "racing-bar");
   const priorityIndexes = getTopValueIndexes(items.map((item) => item.value), labelLimit);
+  const labelWeight = getLabelFontWeight(labels.weight);
 
   return (
-    <div className="grid h-full min-h-[260px] gap-4 rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.98),rgba(248,244,238,0.92))] px-5 py-5">
+    <div className="chart-paper grid h-full min-h-[260px] gap-4 rounded-[26px] border border-line-strong/75 px-5 py-5 shadow-inset">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-line-subtle bg-surface-1 px-4 py-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-ink-3">Timeline</p>
+          <p className="mt-1 text-sm font-medium text-ink-1">현재 프레임 기준 순위</p>
+        </div>
+        <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1 text-[11px] tracking-[0.08em] text-ink-2">
+          재생 속도 {racingBarOptions.playSpeed === "slow" ? "느리게" : racingBarOptions.playSpeed === "fast" ? "빠르게" : "기본"}
+        </span>
+      </div>
       {items.map((item, index) => {
         const widthPercentage = Math.max(18, (item.value / maxValue) * 100);
         const isPriority = priorityIndexes.has(index);
@@ -1347,7 +2368,7 @@ function RacingBarChart({
                 detail="순위 막대의 이름과 값입니다."
                 align="left"
               >
-                <span className="max-w-[180px] truncate text-sm font-medium text-ink-1">
+                <span className={cx("max-w-[180px] truncate text-sm text-ink-1", labelWeight.className)}>
                   {truncateLabel(showName ? item.displayLabel : item.label, 20)}
                 </span>
               </PreviewTooltip>
@@ -1356,7 +2377,7 @@ function RacingBarChart({
               <span className="text-sm text-ink-2">{formatLabelValue(item.value, labels, totalValue)}</span>
             ) : null}
           </div>
-          <div className="h-11 rounded-md bg-surface-2 p-1">
+          <div className="rounded-[16px] bg-surface-2 p-1.5">
             <PreviewTooltip
               eyebrow={`${index + 1}위`}
               label={showName ? item.displayLabel : item.label}
@@ -1364,13 +2385,13 @@ function RacingBarChart({
               detail={`${Math.round((item.value / Math.max(totalValue, 1)) * 100)}% 비중`}
               align="left"
               wrapperClassName="flex h-full"
-              triggerClassName="flex h-full min-w-0 items-center rounded-sm px-4 text-xs font-medium text-ink-inverse"
+              triggerClassName="flex h-full min-w-0 items-center rounded-[12px] px-4 text-xs font-medium text-ink-inverse"
             >
               <span
-                className="flex h-full min-w-0 items-center rounded-sm px-4 text-xs font-medium text-ink-inverse"
+                className="flex h-11 min-w-0 items-center rounded-[12px] px-4 text-xs font-medium text-ink-inverse"
                 style={{
                   width: `${widthPercentage}%`,
-                  backgroundColor: colors[index % colors.length]
+                  background: `linear-gradient(90deg, ${colors[index % colors.length]}, rgba(48,71,82,0.92))`
                 }}
               >
                 <span className="truncate">{inlineText}</span>
@@ -1391,7 +2412,12 @@ function PreviewChart({
   items,
   colors,
   totalValue,
-  labels
+  labels,
+  axes,
+  chartOptions,
+  layoutDensity,
+  xAxisLabel,
+  valueAxisLabel
 }: {
   chartType: EditorChartType;
   categories: string[];
@@ -1401,20 +2427,53 @@ function PreviewChart({
   colors: string[];
   totalValue: number;
   labels: EditorDraftState["labels"];
+  axes: EditorDraftState["axes"];
+  chartOptions: EditorDraftState["chartOptions"];
+  layoutDensity: DensityMode;
+  xAxisLabel: string;
+  valueAxisLabel: string;
 }) {
   if (chartType === "line") {
-    return <LineChart categories={categories} categoryLabels={categoryLabels} series={series} colors={colors} totalValue={totalValue} labels={labels} />;
+    return (
+      <LineChart
+        categories={categories}
+        categoryLabels={categoryLabels}
+        series={series}
+        colors={colors}
+        totalValue={totalValue}
+        labels={labels}
+        axes={axes}
+        lineOptions={chartOptions.line}
+        layoutDensity={layoutDensity}
+        xAxisLabel={xAxisLabel}
+        valueAxisLabel={valueAxisLabel}
+      />
+    );
   }
 
   if (chartType === "bar") {
-    return <BarChart categories={categories} categoryLabels={categoryLabels} series={series} colors={colors} totalValue={totalValue} labels={labels} />;
+    return (
+      <BarChart
+        categories={categories}
+        categoryLabels={categoryLabels}
+        series={series}
+        colors={colors}
+        totalValue={totalValue}
+        labels={labels}
+        axes={axes}
+        barOptions={chartOptions.bar}
+        layoutDensity={layoutDensity}
+        xAxisLabel={xAxisLabel}
+        valueAxisLabel={valueAxisLabel}
+      />
+    );
   }
 
   if (chartType === "donut") {
-    return <DonutChart items={items} colors={colors} labels={labels} />;
+    return <DonutChart items={items} colors={colors} labels={labels} donutOptions={chartOptions.donut} />;
   }
 
-  return <RacingBarChart items={items} colors={colors} totalValue={totalValue} labels={labels} />;
+  return <RacingBarChart items={items} colors={colors} totalValue={totalValue} labels={labels} racingBarOptions={chartOptions.racingBar} />;
 }
 
 export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
@@ -1422,12 +2481,9 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
   const [savedSnapshot, setSavedSnapshot] = useState<EditorDraftState>(initialDraft);
   const [savedLabel, setSavedLabel] = useState("09:15 기준 로컬 저장됨");
   const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTab>("data");
+  const [qaState, setQaState] = useState<PreviewQaState>("balanced");
 
-  if (!datasetPreview) {
-    return null;
-  }
-
-  const preview = datasetPreview;
+  const preview = previewQaDatasetMap[draft.chartType][qaState] ?? datasetPreview ?? previewQaDatasetMap.line.balanced;
 
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(savedSnapshot);
   const chartDefinition = chartCatalog.find((item) => item.value === draft.chartType) ?? chartCatalog[0];
@@ -1439,11 +2495,29 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
     sortMode: draft.data.sortMode,
     topN: draft.data.topN
   });
+  const xAxisLabel = getFieldLabel(preview, draft.bindings.xFieldKey);
+  const valueAxisLabel = getFieldLabel(preview, draft.bindings.valueFieldKey);
   const recommendationCopy = buildRecommendationCopy(preview, draft.chartType, draft.bindings);
   const legendItems =
     draft.chartType === "donut" || draft.chartType === "racing-bar"
       ? derivedData.items.map((item) => item.displayLabel)
       : derivedData.series.map((item) => item.label);
+  const previewDiagnostics = collectPreviewDiagnostics(preview, draft.chartType, draft.bindings, derivedData);
+  const previewState = getPreviewStateCopy({
+    chartType: draft.chartType,
+    xLabel: xAxisLabel,
+    valueLabel: valueAxisLabel,
+    diagnostics: previewDiagnostics
+  });
+  const legendContextLabel =
+    draft.chartType === "line" || draft.chartType === "bar"
+      ? getFieldLabel(preview, draft.bindings.seriesFieldKey)
+      : xAxisLabel;
+  const canRenderExternalLegend = supportsExternalLegend(draft.chartType);
+  const shouldRenderLegend = canRenderExternalLegend && draft.legend.show && previewState.state !== "empty" && legendItems.length > 0;
+  const topNLabel = draft.chartType === "racing-bar" ? "순위 수" : "Top N 범위";
+  const previewItemCount =
+    draft.chartType === "line" ? derivedData.categories.length : derivedData.items.length || derivedData.categories.length;
 
   const categoryFieldOptions = preview.columns
     .filter((column) => column.type !== "number" && column.key !== draft.bindings.seriesFieldKey)
@@ -1480,13 +2554,33 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
   }
 
   function handleChartChange(chartType: EditorChartType) {
+    const nextPreview = previewQaDatasetMap[chartType][qaState] ?? preview;
+
     updateDraft((current) => ({
       ...current,
       chartType,
-      bindings: getBindingsForChartType(preview, chartType, current.bindings),
+      bindings: getBindingsForChartType(nextPreview, chartType, current.bindings),
+      data: {
+        ...current.data,
+        topN: getQaStateTopN(chartType, qaState)
+      },
       legend: {
         ...current.legend,
-        show: true
+        show: supportsExternalLegend(chartType)
+      }
+    }));
+  }
+
+  function handleQaStateChange(nextState: PreviewQaState) {
+    const nextPreview = previewQaDatasetMap[draft.chartType][nextState] ?? preview;
+
+    setQaState(nextState);
+    updateDraft((current) => ({
+      ...current,
+      bindings: getBindingsForChartType(nextPreview, current.chartType, current.bindings),
+      data: {
+        ...current.data,
+        topN: getQaStateTopN(current.chartType, nextState)
       }
     }));
   }
@@ -1533,40 +2627,54 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
 
   return (
     <EditorShell
-      topBar={
+topBar={
         <TopBar
           title={mockEditorSession.project.name}
-          subtitle={`${projectId} · 업로드에서 감지한 열 구조를 그대로 이어 받아, 어떤 데이터를 어떤 기준으로 보여줄지 직접 고르는 편집 흐름입니다.`}
+          subtitle={`${projectId} · 추천 초안을 바탕으로 제목, 라벨, 축, 범례, 색상, 레이아웃을 실제 발표용 결과물 톤으로 다듬는 작업 공간입니다.`}
           actions={
             <>
               <StatusBadge label="비공개 프로젝트" tone="private" />
+              <StatusBadge label={`표본 ${previewItemCount}개`} tone="neutral" />
+              <StatusBadge label={chartDefinition.label} tone="live" />
               <StatusBadge label={hasUnsavedChanges ? "저장 전 변경 있음" : "로컬 저장됨"} tone={hasUnsavedChanges ? "draft" : "saved"} withDot />
               <Button variant="tertiary" onClick={handleReset} disabled={!hasUnsavedChanges}>
-                저장 상태로 되돌리기
+                변경 취소
               </Button>
-              <Button onClick={handleSave}>변경 내용 저장</Button>
+              <Button onClick={handleSave}>로컬 저장</Button>
+              <Button variant="secondary">미리보기</Button>
+              <Button variant="secondary">PNG · SVG · MP4</Button>
             </>
           }
         />
       }
       rail={
         <>
-          <Card variant="subtle" title="편집 흐름" description="업로드에서 넘어온 데이터 구조와 에디터 작업이 한 흐름으로 이어집니다.">
+          <Card
+            variant="canvas"
+            className="workspace-shell"
+            title="작업 흐름"
+            description="왼쪽 rail은 설명 카드가 아니라 지금 어디까지 왔는지 바로 읽히는 짧은 작업 맥락으로 구성합니다."
+          >
             <div className="space-y-3">
-              <FlowStep index={1} title="차트 선택" description="데이터에 맞는 차트 유형을 고르고 바꿔봅니다." complete />
-              <FlowStep index={2} title="데이터 연결" description="어떤 열을 기준, 값, 범례로 쓸지 정합니다." active />
-              <FlowStep index={3} title="스타일 조정" description="텍스트, 범례, 라벨, 밀도, 비율을 다듬습니다." />
-              <FlowStep index={4} title="결과 확인" description="보고서와 발표에 바로 쓸 수 있는 품질인지 점검합니다." />
+              <FlowStep index={1} title="차트 선택" description="라인, 막대, 도넛, racing bar를 바로 전환합니다." complete />
+              <FlowStep index={2} title="데이터 연결" description="어떤 열을 기준값, 수치값, 범례로 읽을지 정합니다." active />
+              <FlowStep index={3} title="세부 조정" description="텍스트, 라벨, 축, 범례, 밀도와 비율을 다듬습니다." />
+              <FlowStep index={4} title="결과 확인" description="보고서와 발표 슬라이드에 넣을 톤인지 최종 점검합니다." />
             </div>
           </Card>
 
-          <Card variant="subtle" title="업로드에서 받은 데이터" description="업로드 단계에서 감지한 열 구조와 역할 후보를 그대로 보여줍니다.">
+          <Card
+            variant="subtle"
+            className="workspace-shell"
+            title="데이터 맥락"
+            description="에디터 안에서도 업로드에서 넘어온 열 역할과 데이터 성격이 계속 보여야 합니다."
+          >
             <div className="space-y-3">
               {preview.columns.map((column) => (
-                <div key={column.key} className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
+                <div key={column.key} className="rounded-[20px] border border-line-subtle bg-surface-1/94 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-ink-1">{column.name}</p>
-                    <span className="rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3">{column.type}</span>
+                    <span className="rounded-full border border-line-subtle bg-surface-2 px-3 py-1.5 text-[11px] tracking-[0.08em] text-ink-3">{column.type}</span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-ink-2">{getFieldRoleDescription(column)}</p>
                 </div>
@@ -1574,7 +2682,12 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
           </Card>
 
-          <Card variant="default" title="차트 유형" description="선택한 차트에 따라 필요한 필드 구성이 달라집니다.">
+          <Card
+            variant="default"
+            className="workspace-shell"
+            title="차트 유형"
+            description="차트별로 inspector 언어와 결과물의 읽기 방식이 함께 바뀌도록 구조를 묶었습니다."
+          >
             <div className="space-y-2">
               {chartCatalog.map((option) => (
                 <button
@@ -1583,105 +2696,167 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                   onClick={() => handleChartChange(option.value)}
                   className={
                     option.value === draft.chartType
-                      ? "w-full rounded-md border border-line-accent bg-surface-2 px-3 py-3 text-left"
-                      : "w-full rounded-md border border-line-subtle bg-surface-1 px-3 py-3 text-left transition hover:border-line-strong"
+                      ? "w-full rounded-[22px] border border-line-accent bg-accent px-4 py-4 text-left text-ink-inverse shadow-soft"
+                      : "w-full rounded-[22px] border border-line-subtle bg-surface-1/92 px-4 py-4 text-left transition hover:border-line-strong"
                   }
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-ink-1">{option.label}</div>
+                    <div className={option.value === draft.chartType ? "text-sm font-medium text-ink-inverse" : "text-sm font-medium text-ink-1"}>
+                      {option.label}
+                    </div>
                     <span
                       className={
                         option.value === draft.chartType
-                          ? "rounded-full border border-line-accent bg-surface-1 px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-ink-1"
-                          : "rounded-full border border-line-subtle px-3 py-1 text-[11px] tracking-[0.12em] text-ink-3"
+                          ? "rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-inverse"
+                          : "rounded-full border border-line-subtle bg-surface-2 px-3 py-1.5 text-[11px] tracking-[0.08em] text-ink-3"
                       }
                     >
                       {option.badge}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-ink-3">{option.description}</p>
+                  <p className={option.value === draft.chartType ? "mt-2 text-xs leading-5 text-ink-inverse/72" : "mt-2 text-xs leading-5 text-ink-3"}>
+                    {option.description}
+                  </p>
                 </button>
               ))}
             </div>
           </Card>
+
+          <QaStatePanel chartType={draft.chartType} state={qaState} onChange={handleQaStateChange} datasetName={preview.fileName} />
         </>
       }
       canvas={
-        <Card variant="canvas" title="결과 미리보기" description="필드 선택과 옵션 변경이 중앙 결과와 추천 문구에 즉시 반영됩니다.">
-          <div className={`rounded-lg border border-line-subtle bg-[linear-gradient(180deg,rgba(255,252,248,0.92),rgba(239,233,225,0.76))] ${density.shell}`}>
+        <Card
+          variant="canvas"
+          className="workspace-shell"
+          title="차트 캔버스"
+          description="중앙 화면은 결과물의 가치가 가장 먼저 보이도록 주변 패널보다 더 밝고 더 정교하게 설계합니다."
+        >
+          <div className={`workspace-shell rounded-[30px] border border-line-strong/85 ${density.shell}`}>
             <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
               <div>
-                <p className="text-caption uppercase tracking-[0.18em] text-ink-3">추천된 구성</p>
-                <h3 className="mt-2 text-title-2 font-semibold text-ink-1">{draft.text.title}</h3>
+                <p className="text-caption uppercase tracking-[0.18em] text-ink-3">Presentation Canvas</p>
+                <h3 className="mt-2 text-[1.72rem] font-semibold tracking-[-0.045em] text-ink-1">{draft.text.title}</h3>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-2">{recommendationCopy}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge label={chartDefinition.label} tone="live" />
                 <StatusBadge label={getChartToneText(draft.chartType)} tone="neutral" />
+                <StatusBadge label={`${draft.layout.aspectRatio} 캔버스`} tone="neutral" />
+                <StatusBadge label="내보내기 확장 준비" tone="neutral" />
               </div>
             </div>
 
             <div
               data-preview-tooltip-boundary
-              className={`mt-6 rounded-xl border border-line-strong bg-surface-1 shadow-soft ${density.canvas}`}
+              className={`chart-paper sheen-border mt-6 rounded-[30px] border border-line-strong shadow-panel ${density.canvas}`}
             >
-              <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-line-subtle bg-surface-1/88 px-4 py-3">
                 <div>
-                  <p className="text-caption uppercase tracking-[0.16em] text-ink-3">시각화 제목</p>
-                  <h4 className="mt-2 text-xl font-semibold text-ink-1">{draft.text.title}</h4>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-2">{draft.text.subtitle}</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Canvas mode</p>
+                  <p className="mt-1 text-sm font-medium text-ink-1">문서와 슬라이드에 바로 옮길 수 있는 결과물 중심 프리뷰</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge label={theme.label} tone="neutral" />
-                  <StatusBadge label={getLabelModeBadge(draft.labels.mode)} tone={draft.labels.mode === "hidden" ? "neutral" : "live"} />
-                  <StatusBadge label={draft.legend.show ? `범례 ${draft.legend.position}` : "범례 숨김"} tone="neutral" />
-                  <StatusBadge label={`라벨 ${getFieldLabel(preview, draft.bindings.labelFieldKey)}`} tone="neutral" />
+                  <StatusBadge label={`QA ${previewQaStateLabelMap[qaState]}`} tone="neutral" />
                 </div>
               </div>
 
-              {draft.legend.show && draft.legend.position === "top" ? (
+              <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
+                <div>
+                  <p className="text-caption uppercase tracking-[0.16em] text-ink-3">Chart Output</p>
+                  <h4 className="mt-2 text-[1.65rem] font-semibold tracking-[-0.045em] text-ink-1">{draft.text.title}</h4>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-2">{draft.text.subtitle}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge label={getLabelModeBadge(draft.labels.mode)} tone={draft.labels.mode === "hidden" ? "neutral" : "live"} />
+                  <StatusBadge label={canRenderExternalLegend ? (shouldRenderLegend ? `범례 ${draft.legend.position}` : "범례 숨김") : "범례 내장"} tone="neutral" />
+                  <StatusBadge label={draft.axes.showGrid ? "그리드 표시" : "그리드 최소화"} tone="neutral" />
+                  <StatusBadge
+                    label={previewState.badge}
+                    tone={previewState.state === "balanced" ? "saved" : previewState.state === "empty" ? "draft" : "neutral"}
+                  />
+                </div>
+              </div>
+
+              {shouldRenderLegend && draft.legend.position === "top" ? (
                 <div className="mt-5">
-                  <PreviewLegend items={legendItems} colors={theme.colors} position={draft.legend.position} />
+                  <PreviewLegend
+                    items={legendItems}
+                    colors={theme.colors}
+                    position={draft.legend.position}
+                    density={draft.layout.density}
+                    contextLabel={legendContextLabel}
+                  />
                 </div>
               ) : null}
 
               <div
                 className={
-                  draft.legend.show && draft.legend.position === "right"
-                    ? "mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_220px]"
+                  shouldRenderLegend && draft.legend.position === "right"
+                    ? "mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_220px]"
                     : "mt-6"
                 }
               >
-                <div className="min-w-0" style={{ aspectRatio }}>
-                  <PreviewChart
-                    chartType={draft.chartType}
-                    categories={derivedData.categories}
-                    categoryLabels={derivedData.categoryLabels}
-                    series={derivedData.series}
-                    items={derivedData.items}
-                    colors={theme.colors}
-                    totalValue={derivedData.totalValue}
-                    labels={draft.labels}
-                  />
+                <div className="min-w-0">
+                  {previewState.state === "sparse" || previewState.state === "extreme" ? (
+                    <div className="mb-4">
+                      <PreviewStateNotice copy={previewState} chartType={draft.chartType} compact />
+                    </div>
+                  ) : null}
+
+                  <div style={{ aspectRatio }}>
+                    {previewState.state === "empty" ? (
+                      <PreviewStateNotice copy={previewState} chartType={draft.chartType} />
+                    ) : (
+                      <PreviewChart
+                        chartType={draft.chartType}
+                        categories={derivedData.categories}
+                        categoryLabels={derivedData.categoryLabels}
+                        series={derivedData.series}
+                        items={derivedData.items}
+                        colors={theme.colors}
+                        totalValue={derivedData.totalValue}
+                        labels={draft.labels}
+                        axes={draft.axes}
+                        chartOptions={draft.chartOptions}
+                        layoutDensity={draft.layout.density}
+                        xAxisLabel={xAxisLabel}
+                        valueAxisLabel={valueAxisLabel}
+                      />
+                    )}
+                  </div>
                 </div>
 
-                {draft.legend.show && draft.legend.position === "right" ? (
-                  <PreviewLegend items={legendItems} colors={theme.colors} position={draft.legend.position} />
+                {shouldRenderLegend && draft.legend.position === "right" ? (
+                  <PreviewLegend
+                    items={legendItems}
+                    colors={theme.colors}
+                    position={draft.legend.position}
+                    density={draft.layout.density}
+                    contextLabel={legendContextLabel}
+                  />
                 ) : null}
               </div>
 
-              {draft.legend.show && draft.legend.position === "bottom" ? (
+              {shouldRenderLegend && draft.legend.position === "bottom" ? (
                 <div className="mt-5">
-                  <PreviewLegend items={legendItems} colors={theme.colors} position={draft.legend.position} />
+                  <PreviewLegend
+                    items={legendItems}
+                    colors={theme.colors}
+                    position={draft.legend.position}
+                    density={draft.layout.density}
+                    contextLabel={legendContextLabel}
+                  />
                 </div>
               ) : null}
 
-              <div className="mt-5 rounded-lg border border-line-subtle bg-surface-2 px-4 py-4">
+              <div className="mt-5 rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-4">
                 <p className="text-sm leading-6 text-ink-2">{draft.text.caption}</p>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-md border border-line-subtle bg-surface-1 px-4 py-3">
+                <div className="rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">데이터 연결</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {`${getFieldLabel(preview, draft.bindings.xFieldKey)} -> ${getFieldLabel(preview, draft.bindings.valueFieldKey)}`}
@@ -1690,11 +2865,11 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                     범례 {getFieldLabel(preview, draft.bindings.seriesFieldKey)} · 라벨 {getFieldLabel(preview, draft.bindings.labelFieldKey)}
                   </p>
                 </div>
-                <div className="rounded-md border border-line-subtle bg-surface-1 px-4 py-3">
+                <div className="rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">추천 문구 기준</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">{recommendationCopy}</p>
                 </div>
-                <div className="rounded-md border border-line-subtle bg-surface-1 px-4 py-3">
+                <div className="rounded-[22px] border border-line-subtle bg-surface-2/72 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">레이아웃</p>
                   <p className="mt-2 text-sm font-medium text-ink-1">
                     {draft.layout.aspectRatio} · {draft.layout.density === "compact" ? "촘촘하게" : draft.layout.density === "comfortable" ? "넉넉하게" : "기본"}
@@ -1706,7 +2881,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             <MetricStrip
               className="mt-5"
               items={[
-                { label: "보이는 항목", value: `${draft.chartType === "line" ? derivedData.categories.length : derivedData.items.length || derivedData.categories.length}개`, hint: "선택한 필드와 정렬 기준 반영" },
+                { label: "보이는 항목", value: `${previewItemCount}개`, hint: "선택한 필드와 정렬 기준 반영" },
                 { label: "합계", value: formatNumber(derivedData.totalValue), hint: "현재 보이는 결과 기준" },
                 { label: "저장 상태", value: hasUnsavedChanges ? "저장 전 변경 있음" : savedLabel, hint: "local state만 반영" }
               ]}
@@ -1722,7 +2897,7 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
           onTabChange={(tab) => setActiveInspectorTab(tab as InspectorTab)}
         >
           {activeInspectorTab === "data" ? (
-          <InspectorSection title="데이터 탭" description="무슨 데이터를 어떤 기준으로 보여줄지 직접 고르는 핵심 단계입니다." badge={chartDefinition.label}>
+          <InspectorSection title="데이터 연결" description="무슨 데이터를 어떤 기준으로 보여줄지 직접 고르는 핵심 단계입니다." badge={chartDefinition.label}>
             <SelectField
               label={bindingUiCopy.x.label}
               hint={bindingUiCopy.x.hint}
@@ -1777,10 +2952,10 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
 
             {draft.chartType !== "line" ? (
               <RangeField
-                label="Top N 범위"
+                label={topNLabel}
                 value={draft.data.topN}
                 min={3}
-                max={6}
+                max={draft.chartType === "racing-bar" ? 8 : 6}
                 onChange={(value) =>
                   updateDraft((current) => ({
                     ...current,
@@ -1796,11 +2971,21 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 선 차트는 보통 흐름 전체를 보는 것이 자연스러워 Top N 대신 가로축과 구분 기준 조합이 더 중요합니다.
               </div>
             )}
+
+            <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+              {draft.chartType === "bar"
+                ? "막대 차트에서는 정렬과 Top N, 막대 두께가 함께 읽기 속도를 결정합니다."
+                : draft.chartType === "donut"
+                  ? "도넛 차트에서는 항목 기준과 값 기준이 곧 조각 구조가 됩니다."
+                  : draft.chartType === "racing-bar"
+                    ? "막대 경주는 순위 수와 재생 속도 감각이 곧 결과물 인상을 만듭니다."
+                    : "선 차트에서는 시간 축과 값 축의 조합이 가장 중요한 구조를 만듭니다."}
+            </div>
           </InspectorSection>
           ) : null}
 
           {activeInspectorTab === "labels" ? (
-          <InspectorSection title="Labels" description="차트 안에 직접 새겨지는 이름과 값을 조절합니다. 라벨 필드를 바꾸면 본문 텍스트도 즉시 달라집니다." badge={getLabelModeBadge(draft.labels.mode)}>
+          <InspectorSection title="라벨 설정" description="차트 안에 직접 새겨지는 이름과 값을 조절합니다. 라벨 필드를 바꾸면 본문 텍스트도 즉시 달라집니다." badge={getLabelModeBadge(draft.labels.mode)}>
             <ControlGroup title="라벨 기준" description="차트 안에서 어떤 이름을 읽게 할지 먼저 정합니다. 긴 이름은 화면에서는 줄이고, hover로 전체를 확인합니다.">
             <SelectField
               label="라벨 필드"
@@ -1905,6 +3090,46 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
             </div>
             </ControlGroup>
 
+            <ControlGroup title="라벨 톤" description="라벨 크기와 굵기를 바꿔 결과물의 정보 밀도를 조절합니다.">
+            <SegmentedField
+              label="라벨 크기"
+              value={draft.labels.size}
+              options={[
+                { value: "sm", label: "작게" },
+                { value: "md", label: "기본" },
+                { value: "lg", label: "크게" }
+              ]}
+              onChange={(value) =>
+                updateDraft((current) => ({
+                  ...current,
+                  labels: {
+                    ...current.labels,
+                    size: value
+                  }
+                }))
+              }
+            />
+
+            <SegmentedField
+              label="라벨 굵기"
+              value={draft.labels.weight}
+              options={[
+                { value: "regular", label: "기본" },
+                { value: "medium", label: "중간" },
+                { value: "bold", label: "강하게" }
+              ]}
+              onChange={(value) =>
+                updateDraft((current) => ({
+                  ...current,
+                  labels: {
+                    ...current.labels,
+                    weight: value
+                  }
+                }))
+              }
+            />
+            </ControlGroup>
+
             <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
               {draft.chartType === "bar"
                 ? "막대 차트는 막대 끝에 값을, 축 아래에는 이름을 나눠 보여줘 비교가 빨리 읽히게 합니다."
@@ -1990,24 +3215,204 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 ))}
               </div>
             </div>
+
+            {draft.chartType === "line" ? (
+              <ControlGroup title="선 차트 옵션" description="포인트와 선 굵기를 조절해 발표용 톤과 설명형 톤을 맞춥니다.">
+                <ToggleField
+                  label="포인트 표시"
+                  description="핵심 포인트를 점으로 강조합니다."
+                  checked={draft.chartOptions.line.showPoints}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        line: {
+                          ...current.chartOptions.line,
+                          showPoints: checked
+                        }
+                      }
+                    }))
+                  }
+                />
+                <SegmentedField
+                  label="선 굵기"
+                  value={draft.chartOptions.line.strokeWeight}
+                  options={[
+                    { value: "thin", label: "얇게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "bold", label: "강하게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        line: {
+                          ...current.chartOptions.line,
+                          strokeWeight: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
+
+            {draft.chartType === "bar" ? (
+              <ControlGroup title="막대 차트 옵션" description="막대 두께로 비교 밀도와 무게 중심을 조절합니다.">
+                <SegmentedField
+                  label="막대 두께"
+                  value={draft.chartOptions.bar.thickness}
+                  options={[
+                    { value: "slim", label: "가늘게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "bold", label: "두껍게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        bar: {
+                          ...current.chartOptions.bar,
+                          thickness: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
+
+            {draft.chartType === "donut" ? (
+              <ControlGroup title="도넛 차트 옵션" description="조각 간격과 중앙 공간으로 비중 차트의 분위기를 조절합니다.">
+                <SegmentedField
+                  label="조각 간격"
+                  value={draft.chartOptions.donut.segmentGap}
+                  options={[
+                    { value: "tight", label: "좁게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "wide", label: "넓게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        donut: {
+                          ...current.chartOptions.donut,
+                          segmentGap: value
+                        }
+                      }
+                    }))
+                  }
+                />
+                <SegmentedField
+                  label="중앙 공간"
+                  value={draft.chartOptions.donut.centerSpace}
+                  options={[
+                    { value: "tight", label: "좁게" },
+                    { value: "balanced", label: "기본" },
+                    { value: "wide", label: "넓게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        donut: {
+                          ...current.chartOptions.donut,
+                          centerSpace: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
+
+            {draft.chartType === "racing-bar" ? (
+              <ControlGroup title="막대 경주 옵션" description="향후 MP4/GIF export로 이어질 재생 감각을 미리 조절합니다.">
+                <SegmentedField
+                  label="재생 속도"
+                  value={draft.chartOptions.racingBar.playSpeed}
+                  options={[
+                    { value: "slow", label: "느리게" },
+                    { value: "normal", label: "기본" },
+                    { value: "fast", label: "빠르게" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      chartOptions: {
+                        ...current.chartOptions,
+                        racingBar: {
+                          ...current.chartOptions.racingBar,
+                          playSpeed: value
+                        }
+                      }
+                    }))
+                  }
+                />
+              </ControlGroup>
+            ) : null}
           </InspectorSection>
           </>
           ) : null}
 
           {activeInspectorTab === "axes" ? (
-          <InspectorSection title="Axes" description="가로축과 값 축이 무엇을 말하는지 한눈에 확인합니다." badge="읽기 기준">
+          <InspectorSection title="축과 그리드" description="축 제목, 눈금, 보조 격자가 데이터보다 앞서지 않도록 읽기 위계를 정리합니다." badge="읽기 기준">
+            {(draft.chartType === "line" || draft.chartType === "bar") ? (
+              <>
+                <ToggleField
+                  label="축 표시"
+                  description="값 눈금과 축 라벨을 표시합니다."
+                  checked={draft.axes.showAxis}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      axes: {
+                        ...current.axes,
+                        showAxis: checked
+                      }
+                    }))
+                  }
+                />
+                <ToggleField
+                  label="그리드 표시"
+                  description="보조선과 기준선을 유지해 값 비교를 더 쉽게 만듭니다."
+                  checked={draft.axes.showGrid}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      axes: {
+                        ...current.axes,
+                        showGrid: checked
+                      }
+                    }))
+                  }
+                />
+              </>
+            ) : (
+              <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+                {draft.chartType === "donut"
+                  ? "도넛 차트는 축보다 조각, 범례, 라벨 밀도가 읽기 품질을 더 크게 좌우합니다."
+                  : "막대 경주는 축보다 순위, 바 길이, 속도 감각이 결과물 인상을 결정합니다."}
+              </div>
+            )}
             <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
               <p className="text-sm font-medium text-ink-1">가로축 / 항목 기준</p>
               <p className="mt-2 text-sm leading-6 text-ink-2">{getFieldLabel(preview, draft.bindings.xFieldKey)}</p>
               <p className="mt-2 text-xs leading-5 text-ink-3">
-                차트 안에서 항목을 나누는 기준입니다. 긴 이름은 미리보기에서 말줄임 처리하고, 마우스를 올리면 전체 이름을 확인할 수 있습니다.
+                차트 안에서 항목을 나누는 기준입니다. 긴 이름은 축에서 밀도에 맞게 줄여 보여주고, 전체 이름은 툴팁으로 다시 확인할 수 있습니다.
               </p>
             </div>
             <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
               <p className="text-sm font-medium text-ink-1">값 축 / 크기 기준</p>
               <p className="mt-2 text-sm leading-6 text-ink-2">{getFieldLabel(preview, draft.bindings.valueFieldKey)}</p>
               <p className="mt-2 text-xs leading-5 text-ink-3">
-                막대 길이, 선 높이, 도넛 조각 크기를 만드는 숫자입니다. Labels 탭의 표기 방식과 함께 결과물에 반영됩니다.
+                막대 길이, 선 높이, 도넛 조각 크기를 만드는 숫자입니다. 주요 눈금과 보조 격자도 이 값을 기준으로 같은 톤으로 정리됩니다.
               </p>
             </div>
             <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4">
@@ -2021,39 +3426,49 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
           ) : null}
 
           {activeInspectorTab === "legend" ? (
-          <InspectorSection title="범례" description="차트가 복잡해 보이지 않도록 범례 표시와 위치를 조정합니다.">
-            <ToggleField
-              label="범례 표시"
-              description="색과 항목의 대응 관계를 함께 보여줍니다."
-              checked={draft.legend.show}
-              onChange={(checked) =>
-                updateDraft((current) => ({
-                  ...current,
-                  legend: {
-                    ...current.legend,
-                    show: checked
+          <InspectorSection title="범례" description="차트 본문보다 한 단계 낮은 정보 레이어로 두되, 긴 항목명과 많은 항목도 정돈되게 관리합니다.">
+            {canRenderExternalLegend ? (
+              <>
+                <ToggleField
+                  label="범례 표시"
+                  description="색과 항목의 대응 관계를 함께 보여줍니다."
+                  checked={draft.legend.show}
+                  onChange={(checked) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      legend: {
+                        ...current.legend,
+                        show: checked
+                      }
+                    }))
                   }
-                }))
-              }
-            />
-            <SegmentedField
-              label="범례 위치"
-              value={draft.legend.position}
-              options={[
-                { value: "top", label: "상단" },
-                { value: "right", label: "오른쪽" },
-                { value: "bottom", label: "하단" }
-              ]}
-              onChange={(value) =>
-                updateDraft((current) => ({
-                  ...current,
-                  legend: {
-                    ...current.legend,
-                    position: value
+                />
+                <SegmentedField
+                  label="범례 위치"
+                  value={draft.legend.position}
+                  options={[
+                    { value: "top", label: "상단" },
+                    { value: "right", label: "오른쪽" },
+                    { value: "bottom", label: "하단" }
+                  ]}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      legend: {
+                        ...current.legend,
+                        position: value
+                      }
+                    }))
                   }
-                }))
-              }
-            />
+                />
+              </>
+            ) : (
+              <div className="rounded-lg border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+                {draft.chartType === "donut"
+                  ? "도넛 차트는 조각 목록이 이미 범례 역할을 함께 맡고 있어, 별도 범례를 더하지 않고 본문 밀도를 우선 정리합니다."
+                  : "막대 경주는 순위, 이름, 값이 한 줄 안에서 바로 대응되므로, 별도 범례보다 본문 라벨을 또렷하게 유지하는 쪽이 읽기 좋습니다."}
+              </div>
+            )}
           </InspectorSection>
           ) : null}
 
@@ -2095,6 +3510,13 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
                 }))
               }
             />
+
+            {draft.chartType === "racing-bar" ? (
+              <div className="rounded-xl border border-line-subtle bg-surface-1 px-4 py-4 text-sm leading-6 text-ink-2">
+                현재는 정적인 프레임이지만, 이 레이아웃과 속도 설정은 향후 MP4/GIF export UI로 자연스럽게 확장될 수 있도록
+                구조를 유지합니다.
+              </div>
+            ) : null}
           </InspectorSection>
           ) : null}
 

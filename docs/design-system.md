@@ -1,146 +1,111 @@
-# MAC Design System
+# MAC Visual System
 
-## Intent
-The MAC interface should feel like a premium creative SaaS product, not a startup template and not a decorative concept piece. The visual system is designed to feel:
+## Product Reading
+MAC is a Korean no-code chart editor for non-specialists.
+The product promise is not "AI makes a chart for you."
+The promise is "you arrive at a presentation-ready chart without becoming a chart expert."
 
-- refined
-- editorial
-- restrained
-- product-grade
-- calm under repeated use
+## Why The Previous UI Failed
+- too many equally weighted cards made every screen feel like a template
+- borders, panels, and rounded boxes carried the hierarchy instead of the product scene
+- hero copy was too long for Korean line breaks and lost impact before the mock had a chance to sell the product
+- chart results looked like placeholders, so the service felt like a demo instead of a tool people would trust for a report
+- editor zones were functionally present, but they read like a dashboard instead of a chart workspace
 
-## Core Principles
+## New Concept
+The new direction is "editorial data studio".
+It mixes warm paper surfaces with graphite depth, precise Korean typography, layered product mocks, and export-ready chart canvases.
+Landing is the desire layer.
+Editor is the proof layer.
 
-### One Product, Not Two
-Landing, login, hub, upload, and editor must look like the same product viewed at different depths. Public pages should not switch to a louder visual language than the app.
+## Brand Keywords
+- Korean-first
+- editorial precision
+- calm authority
+- crafted output
+- no-code, not no-quality
+- presentation-ready
 
-### Surface Hierarchy Over Decoration
-Structure comes from surface tone, spacing, and borders before it comes from shadow, radius, or gradients.
+## Visual Rules
 
-### Quiet Status Language
-Save indicators, private-state badges, empty states, and placeholders should feel dependable and understated.
-
-### Placeholder Quality Matters
-Even mocked surfaces should look like believable product states. Placeholder blocks are part of the UX, not throwaway scaffolding.
-
-## Token Families
-
-### Color
-- `canvas`: overall page ground
-- `canvas-elevated`: subtle backdrop differentiation
-- `surface-1` to `surface-4`: stacked UI surfaces
-- `ink-1` to `ink-3`: primary, secondary, and tertiary text
-- `line-subtle`, `line-strong`, `line-accent`: border hierarchy
-- `accent`, `accent-soft`, `accent-strong`: restrained brand emphasis
-- `success`, `warning`, `danger`, `info`: state colors
+### Scene First
+- every major screen needs one dominant scene, not a grid of equal cards
+- hero must show chart canvas, inspector, and data flow in one glance
+- supporting information should appear as rails, strips, chips, or floating notes
 
 ### Typography
-- `display`: editorial serif used for high-emphasis product moments
-- `sans`: all operational UI, dense surfaces, forms, and editor chrome
-- named sizes:
-  - `hero`
-  - `display`
-  - `title-1`
-  - `title-2`
-  - `body`
-  - `caption`
+- use Korean sans-serif only
+- hero headlines stay short enough to hold at 2 lines on wide desktop, 3 lines at most on smaller widths
+- large Korean text should be compact, quiet, and confident, never stretched or over-tracked
+- English is metadata, never the main message
 
-### Radius
-- keep radii restrained
-- default product surfaces use `sm` or `md`
-- `lg` and `xl` are reserved for major shells, never sprayed across every component
+### Color
+- default field uses warm paper, fog, and mineral neutrals
+- product emphasis uses graphite, blue-charcoal, moss, and muted bronze
+- no loud rainbow palettes
+- chart canvases should be brighter and sharper than surrounding chrome so results feel valuable
 
-### Shadow
-- shadows should support separation, not advertise themselves
-- `soft`: common cards and controls
-- `panel`: major shells only
-- `inset`: restrained inner polish for secondary surfaces
+### Depth
+- use layered gradients, thin rules, inner highlights, and soft atmospheric shadows
+- avoid repetitive card stacks with identical border and radius treatment
+- make chrome recede and make the product artifact move forward
 
-### Chart Palette
-The default chart palette should harmonize with the UI and avoid loud dashboard colors. It should support muted editorial compositions before custom theming exists.
+### Chart Output
+- every sample must look exportable
+- titles, subtitles, source, axes, legend, labels, and notes are part of the design
+- line, bar, donut, and racing bar each need a distinct reading rhythm
+- racing bar should imply timeline playback and future MP4/GIF export even before export exists
 
-## Component Rules
+### Editor
+- top bar should feel like a working document header
+- left rail should communicate workflow and dataset context, not generic navigation copy
+- center canvas is the hero of the workspace
+- right inspector should feel dense, exact, and tool-like
+- chart type changes must visibly alter inspector language and preview behavior
 
-### Buttons
-- `primary`: decisive product actions
-- `secondary`: strong but lower-emphasis actions
-- `tertiary`: structured utility actions
-- `ghost`: low-emphasis navigation or contextual actions
+## Page Intent
 
-### Cards
-- `default`: standard product container
-- `subtle`: quieter secondary surface
-- `canvas`: major presentation surface
-- `ghost`: content grouping without visible container emphasis
+### Landing
+- first fold sells the product with one strong headline and one product scene
+- gallery proves output quality
+- supporting sections must change rhythm instead of repeating the same container
 
-### Inputs
-- labels and hint text are part of the component contract
-- focus state should rely on border and ring restraint, not glow-heavy treatments
+### Projects
+- read as a re-entry hub
+- "what I should do next" matters more than counts
+- recent work should appear as active outcomes, not card inventory
 
-### Badges and Status
-- badges should communicate state, never dominate layout
-- use dots only when live or save state needs quicker scanning
+### Upload
+- read as an intake gate into the editor
+- reduce file-drop cliche
+- make the user feel that the next step is chart recommendation and editing, not data administration
 
-### Page Headers
-- page headers establish scene and hierarchy
-- the title should carry editorial confidence while actions remain operational
+### Editor
+- read as a creative productivity tool, not admin software
+- status, save state, preview, and export intent should all be visible in the first screen
+- inspector hierarchy must clearly surface chart-type-specific controls
 
-## Layout Rules
+## Motion And Responsiveness
+- motion should feel structural: layered reveals, floating surfaces, subtle chart pulses
+- no generic micro-interactions everywhere
+- verify headline wraps, canvas scale, inspector width, and table overflow at 1440px, 1280px, and 1024px
 
-### Public Shell
-- generous horizontal breathing room
-- sticky top frame
-- large type, minimal clutter
+## What We Keep
+- local-state editor architecture
+- field mapping and recommendation logic
+- label system, tooltip system, fallback states
+- responsive layout and chart-type-specific controls
 
-### App Shell
-- stable sidebar
-- clearly separated top bar
-- content area uses subtle wash, not flat white
+## What We Reject
+- SaaS template hero sections
+- uniform beige panels around every section
+- feature-card grids as the main storytelling device
+- generic dashboard framing
+- placeholder-looking chart previews
+- long Korean hero sentences with awkward line breaks
 
-### Editor Shell
-- left: stable project and chart context
-- center: dominant preview canvas
-- right: inspector and system controls
-- desktop-first hierarchy is explicit
-
-## State Design Rules
-
-### Empty States
-- should explain the next meaningful action
-- must feel intentionally designed, not like debug placeholders
-
-### Loading States
-- use structured skeleton rhythm, not random gray bars
-- preserve the final layout shape while content is missing
-
-### Save and Draft States
-- use understated status indicators
-- emphasize trust and clarity over alert-like urgency
-
-## UI Package Structure
-
-```text
-packages/ui/src/
-  components/
-    primitives/
-    compositions/
-    feedback/
-    navigation/
-    shells/
-  tokens.ts
-```
-
-### Layering Guidance
-- `primitives`: low-level reusable controls and containers
-- `compositions`: reusable assembled patterns such as section headers, chart placeholders, and preview tables
-- `feedback`: states and status treatments
-- `navigation`: app framing pieces
-- `shells`: top-level layout scaffolds
-
-## Current Limits
-The current system is still a demo shell. It does not yet include:
-
-- production loading choreography
-- full form field family
-- dropdowns, menus, modal patterns, or tables beyond preview scope
-- final editor control widgets
+## Quality Bar
+- landing first fold should create immediate product desire
+- editor first screen should look usable before the user reads body copy
+- chart output should feel ready for a deck or report
+- every page should reinforce that MAC is a premium Korean no-code visualization editor
