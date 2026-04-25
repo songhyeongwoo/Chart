@@ -11,6 +11,7 @@ import {
   type CanonicalColorMode as ColorMode,
   type CanonicalEditorTab as EditorTab,
 } from "./editor-adapters";
+import { useCanonicalChartControlsState, type CanonicalChartControls } from "./useCanonicalChartControlsState";
 import { useCanonicalEditorDraftState } from "./useCanonicalEditorDraftState";
 import { useCanonicalEditorViewState } from "./useCanonicalEditorViewState";
 import { useCanonicalFieldMappingState, type CanonicalFieldMappingState } from "./useCanonicalFieldMappingState";
@@ -41,6 +42,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
     caption,
   } = useCanonicalEditorDraftState();
   const fieldMapping = useCanonicalFieldMappingState();
+  const chartControls = useCanonicalChartControlsState();
   const {
     exportOpen,
     setExportOpen,
@@ -271,6 +273,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
             subtitle={subtitle}
             caption={caption}
             fieldMapping={fieldMapping}
+            chartControls={chartControls}
             colorMode={colorMode} setColorMode={setColorMode}
             palette={palette} setPalette={setPalette}
             singleColor={singleColor} setSingleColor={setSingleColor}
@@ -340,6 +343,7 @@ type InspectorProps = {
   subtitle: string;
   caption: string;
   fieldMapping: CanonicalFieldMappingState;
+  chartControls: CanonicalChartControls;
   colorMode: ColorMode; setColorMode: (c: ColorMode) => void;
   palette: PaletteKey; setPalette: (p: PaletteKey) => void;
   singleColor: string; setSingleColor: (v: string) => void;
@@ -405,34 +409,44 @@ function Inspector(p: InspectorProps) {
       </Acc>
 
       <Acc icon={<Axis3D size={12} />} title={p.chart === "race" ? "레이싱 설정" : p.chart === "donut" ? "도넛 설정" : p.chart === "line" ? "선 설정" : "막대 설정"} open={open.options} onToggle={() => toggle("options")}>
-        <ChartOptions chart={p.chart} />
+        <ChartOptions chart={p.chart} controls={p.chartControls} />
       </Acc>
 
       <Acc icon={<TagIcon size={12} />} title="라벨" open={open.labels} onToggle={() => toggle("labels")}>
-        <Row label="값 라벨" value="위쪽" />
-        <Row label="데이터 단위" value="지수" />
-        <SlideRow label="라벨 크기" v={0.5} value="12px" />
-        <Toggle label="핵심 값만 강조" />
+        <Row label="값 라벨" value={p.chartControls.labels.visibilityLabel} onClick={p.chartControls.cycleLabelMode} />
+        <Row label="데이터 단위" value={p.chartControls.labels.formatLabel} onClick={p.chartControls.cycleLabelFormat} />
+        <SlideRow label="라벨 크기" v={p.chartControls.labels.sizeRatio} value={p.chartControls.labels.sizeLabel} />
+        <Toggle label="핵심 값만 강조" on={p.chartControls.labels.emphasizeKeyValues} onChange={p.chartControls.toggleKeyValueEmphasis} />
       </Acc>
 
       <Acc icon={<Grid3x3 size={12} />} title="축 · 그리드" open={open.axis} onToggle={() => toggle("axis")}>
         <div className="grid grid-cols-4 gap-1">
-          {["가로", "세로", "양쪽", "없음"].map((t, i) => <Seg key={t} active={i === 0}>{t}</Seg>)}
+          {[
+            { label: "가로", value: "x" as const },
+            { label: "세로", value: "y" as const },
+            { label: "양쪽", value: "both" as const },
+            { label: "없음", value: "none" as const },
+          ].map((t) => <Seg key={t.label} active={p.chartControls.axes.orientation === t.value} onClick={() => p.chartControls.setAxisOrientation(t.value)}>{t.label}</Seg>)}
         </div>
         <Row label="Y축 범위" value="0 – 100" />
         <Row label="눈금 간격" value="25" />
-        <Toggle label="X축 라벨 기울이기" />
+        <Toggle label="X축 라벨 기울이기" on={p.chartControls.axes.rotateXLabels} onChange={p.chartControls.toggleRotateXLabels} />
       </Acc>
 
       <Acc icon={<Layout size={12} />} title="범례" open={open.legend} onToggle={() => toggle("legend")}>
         <div className="grid grid-cols-4 gap-1">
-          {["위", "아래", "오른쪽", "없음"].map((t, i) => <Seg key={t} active={i === 1}>{t}</Seg>)}
+          {[
+            { label: "위", value: "top" as const },
+            { label: "아래", value: "bottom" as const },
+            { label: "오른쪽", value: "right" as const },
+            { label: "없음", value: "none" as const },
+          ].map((t) => <Seg key={t.label} active={t.value === "none" ? !p.chartControls.legend.show : p.chartControls.legend.show && p.chartControls.legend.position === t.value} onClick={() => p.chartControls.setLegendPosition(t.value)}>{t.label}</Seg>)}
         </div>
       </Acc>
 
       <Acc icon={<Layout size={12} />} title="레이아웃" open={open.layout} onToggle={() => toggle("layout")}>
-        <Row label="여백" value="24px" />
-        <Row label="캔버스 비율" value="16 : 9" />
+        <Row label="여백" value={p.chartControls.layout.margin} onClick={p.chartControls.cycleMargin} />
+        <Row label="캔버스 비율" value={p.chartControls.layout.aspectRatio.replace(":", " : ")} onClick={p.chartControls.cycleAspectRatio} />
       </Acc>
 
       <Acc icon={<Download size={12} />} title="내보내기" open={open.export} onToggle={() => toggle("export")} last>
@@ -593,21 +607,21 @@ function ColorBox({ color, onChange }: { color: string; onChange: (v: string) =>
 }
 
 /* ---------- Chart options (per type) ---------- */
-function ChartOptions({ chart }: { chart: ChartType }) {
+function ChartOptions({ chart, controls }: { chart: ChartType; controls: CanonicalChartControls }) {
   if (chart === "bar") return (
     <div>
-      <Row label="정렬" value="값 내림차순" />
-      <Row label="표시할 개수" value="8개" />
+      <Row label="정렬" value={controls.data.sortLabel} onClick={controls.cycleSortMode} />
+      <Row label="표시할 개수" value={`${controls.data.topN}개`} onClick={controls.incrementTopN} />
       <SlideRow label="막대 두께" v={0.68} value="68" />
       <SlideRow label="막대 간격" v={0.28} value="28" />
-      <Toggle label="값 라벨" on />
+      <Toggle label="값 라벨" on={controls.labels.mode !== "hidden"} onChange={controls.toggleLabelVisibility} />
     </div>
   );
   if (chart === "line") return (
     <div>
       <SlideRow label="선 굵기" v={0.5} value="2.4" />
       <Toggle label="포인트 표시" on />
-      <Toggle label="핵심 포인트 라벨" />
+      <Toggle label="핵심 포인트 라벨" on={controls.labels.emphasizeKeyValues} onChange={controls.toggleKeyValueEmphasis} />
       <Row label="보간 방식" value="부드럽게" />
     </div>
   );
@@ -651,11 +665,11 @@ function Acc({ icon, title, open, onToggle, children, last }: { icon: React.Reac
     </div>
   );
 }
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
   return (
     <div className="flex items-center justify-between py-1.5 text-[11px]">
       <span className="text-[#5B6173]">{label}</span>
-      <button className="h-7 px-2 rounded-md border border-black/[0.08] bg-white text-[#0B0D14] inline-flex items-center gap-1 text-[10.5px]" style={{ fontWeight: 500 }}>{value} <ChevronDown size={9} /></button>
+      <button onClick={onClick} className="h-7 px-2 rounded-md border border-black/[0.08] bg-white text-[#0B0D14] inline-flex items-center gap-1 text-[10.5px]" style={{ fontWeight: 500 }}>{value} <ChevronDown size={9} /></button>
     </div>
   );
 }
@@ -702,8 +716,8 @@ function Mapping({ label, field, type, count }: { label: string; field: string; 
     </div>
   );
 }
-function Seg({ active, children }: { active?: boolean; children: React.ReactNode }) {
-  return <button className={`h-7 rounded text-[10.5px] ${active ? "bg-[#0B0D14] text-white" : "bg-[#F3F4F7] text-[#3D4253]"}`}>{children}</button>;
+function Seg({ active, children, onClick }: { active?: boolean; children: React.ReactNode; onClick?: () => void }) {
+  return <button onClick={onClick} className={`h-7 rounded text-[10.5px] ${active ? "bg-[#0B0D14] text-white" : "bg-[#F3F4F7] text-[#3D4253]"}`}>{children}</button>;
 }
 function ChartGlyph({ t, active }: { t: AllChartType; active: boolean }) {
   const c = active ? "#fff" : "#5B6173";

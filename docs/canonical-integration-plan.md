@@ -412,8 +412,16 @@ Goal:
 
 Exit criteria:
 
-- Axis/grid/legend/label/layout state changes are represented in draft.
+- Axis/grid/legend/label/layout state changes are represented in canonical adapter-ready state.
 - No old inspector shell is mounted.
+
+Completion note:
+
+- Added canonical chart controls state for labels, axes/grid, legend, layout, and lightweight data controls.
+- Existing canonical inspector positions now read and update that local adapter state without adding new sections or changing visual layout.
+- The controls expose future-compatible draft names for labels, axes, legend, layout, and data, but existing Chart `updateDraft` and renderer code are still not connected.
+- Existing renderer, upload parsing, save/reset, backend, and export behavior are still untouched.
+- Visual parity rules remain in force; Phase 5 can now move into the chart preview renderer adapter.
 
 ### Phase 5: Chart preview renderer
 
