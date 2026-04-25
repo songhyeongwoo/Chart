@@ -2630,19 +2630,34 @@ export function EditorWorkspaceClient({ projectId }: { projectId: string }) {
 topBar={
         <TopBar
           title={mockEditorSession.project.name}
-          subtitle={`${projectId} · 추천 초안을 바탕으로 제목, 라벨, 축, 범례, 색상, 레이아웃을 실제 발표용 결과물 톤으로 다듬는 작업 공간입니다.`}
+          subtitle={`${projectId} · 추천 초안, 데이터 연결, 상세 편집이 한 화면에서 이어지는 MAC의 실제 차트 작업 공간입니다.`}
           actions={
             <>
-              <StatusBadge label="비공개 프로젝트" tone="private" />
+              <div className="mr-1 flex rounded-md border border-line-subtle bg-surface-2/76 p-1">
+                {["추천 차트", "상세 편집", "데이터 수정"].map((item, index) => (
+                  <span
+                    key={item}
+                    className={
+                      index === 1
+                        ? "rounded px-3 py-2 text-xs font-medium text-ink-1 shadow-inset bg-surface-1"
+                        : "px-3 py-2 text-xs font-medium text-ink-3"
+                    }
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <StatusBadge label="비공개" tone="private" />
               <StatusBadge label={`표본 ${previewItemCount}개`} tone="neutral" />
               <StatusBadge label={chartDefinition.label} tone="live" />
-              <StatusBadge label={hasUnsavedChanges ? "저장 전 변경 있음" : "로컬 저장됨"} tone={hasUnsavedChanges ? "draft" : "saved"} withDot />
+              <StatusBadge label={hasUnsavedChanges ? "변경 있음" : "저장됨"} tone={hasUnsavedChanges ? "draft" : "saved"} withDot />
               <Button variant="tertiary" onClick={handleReset} disabled={!hasUnsavedChanges}>
                 변경 취소
               </Button>
-              <Button onClick={handleSave}>로컬 저장</Button>
+              <Button onClick={handleSave}>저장</Button>
               <Button variant="secondary">미리보기</Button>
-              <Button variant="secondary">PNG · SVG · MP4</Button>
+              <Button variant="secondary">PNG/SVG</Button>
+              <Button variant="tertiary">MP4</Button>
             </>
           }
         />
@@ -2727,12 +2742,11 @@ topBar={
       }
       canvas={
         <Card
-          variant="canvas"
-          className="workspace-shell"
-          title="차트 캔버스"
-          description="중앙 화면은 결과물의 가치가 가장 먼저 보이도록 주변 패널보다 더 밝고 더 정교하게 설계합니다."
+          variant="ghost"
+          padding="none"
+          className="h-full"
         >
-          <div className={`workspace-shell rounded-[30px] border border-line-strong/85 ${density.shell}`}>
+          <div className={`workspace-shell rounded-[26px] border border-line-strong/85 shadow-panel ${density.shell}`}>
             <div className={`flex flex-wrap items-start justify-between ${density.gap}`}>
               <div>
                 <p className="text-caption uppercase tracking-[0.18em] text-ink-3">Presentation Canvas</p>
@@ -2749,12 +2763,12 @@ topBar={
 
             <div
               data-preview-tooltip-boundary
-              className={`chart-paper sheen-border mt-6 rounded-[30px] border border-line-strong shadow-panel ${density.canvas}`}
+              className={`chart-paper sheen-border mt-5 rounded-[26px] border border-line-strong shadow-[0_34px_110px_rgba(16,20,24,0.18)] ${density.canvas}`}
             >
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-line-subtle bg-surface-1/88 px-4 py-3">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line-subtle/70 pb-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Canvas mode</p>
-                  <p className="mt-1 text-sm font-medium text-ink-1">문서와 슬라이드에 바로 옮길 수 있는 결과물 중심 프리뷰</p>
+                  <p className="mt-1 text-sm font-medium text-ink-1">발표자료에 바로 옮길 수 있는 결과물 프리뷰</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge label={theme.label} tone="neutral" />

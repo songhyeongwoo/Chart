@@ -17,7 +17,7 @@ export interface SidebarProps {
 
 export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
   return (
-    <aside className="workspace-void flex h-full min-h-[calc(100vh-2rem)] w-full flex-col rounded-[34px] border border-white/8 px-4 py-5 text-white shadow-[0_34px_90px_rgba(0,0,0,0.22)]">
+    <aside className="workspace-void flex h-full min-h-[calc(100vh-2rem)] w-full flex-col rounded-[28px] border border-white/8 px-4 py-5 text-white shadow-[0_30px_80px_rgba(0,0,0,0.2)]">
       <div className="mb-6 border-b border-white/8 px-2 pb-4">
         <p className="text-caption font-medium uppercase tracking-[0.24em] text-white/42">{title}</p>
       </div>
@@ -27,7 +27,7 @@ export function Sidebar({ items, title = "Workspace", footer }: SidebarProps) {
             key={item.href}
             href={item.href}
             className={cn(
-              "block rounded-[22px] border px-4 py-3.5 transition-all duration-200 ease-refined",
+              "block rounded-md border px-4 py-3.5 transition-all duration-200 ease-refined",
               item.active
                 ? "border-white/22 bg-white/16 text-white shadow-[0_18px_34px_rgba(0,0,0,0.14)]"
                 : "border-white/8 bg-white/4 text-white/68 hover:border-white/16 hover:bg-white/8 hover:text-white"
