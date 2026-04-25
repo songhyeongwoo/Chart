@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "./Logo";
 import { PALETTES, type PaletteKey } from "./Charts";
 import { CanonicalPreviewChart } from "./CanonicalPreviewChart";
+import type { CanonicalEditorSnapshot } from "./canonical-snapshot-adapters";
 import {
   isCanonicalChartType,
   type CanonicalAllChartType as AllChartType,
@@ -15,6 +16,7 @@ import {
 import { useCanonicalChartControlsState, type CanonicalChartControls } from "./useCanonicalChartControlsState";
 import { useCanonicalDatasetState, type CanonicalDatasetState } from "./useCanonicalDatasetState";
 import { useCanonicalEditorDraftState } from "./useCanonicalEditorDraftState";
+import { useCanonicalEditorSnapshotState } from "./useCanonicalEditorSnapshotState";
 import { useCanonicalEditorViewState } from "./useCanonicalEditorViewState";
 import { useCanonicalFieldMappingState, type CanonicalFieldMappingState } from "./useCanonicalFieldMappingState";
 import { ChevronLeft, Save, Play, Pause, Undo2, Redo2, Sparkles, ChevronDown, Share2, Plus, X, Type, Table, Layers, Palette, Axis3D, Grid3x3, Tag as TagIcon, Layout, Download, Eye, Check, ArrowRight, LayoutGrid, Search, Filter, AlertTriangle, RefreshCw, Wand2 } from "lucide-react";
@@ -34,7 +36,7 @@ const CHART_GALLERY: { group: string; items: { k: AllChartType; l: string; soon?
 ];
 
 export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBack: () => void; tab?: EditorTab; onTabChange?: (t: EditorTab) => void; projectId?: string }) {
-  void projectId;
+  const projectKey = projectId ?? "demo-project";
   const setTab = (t: EditorTab) => onTabChange?.(t);
   const {
     chart,
@@ -42,6 +44,8 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
     title,
     subtitle,
     caption,
+    draftSnapshot,
+    applyDraftSnapshot,
   } = useCanonicalEditorDraftState();
   const datasetState = useCanonicalDatasetState();
   const fieldMapping = useCanonicalFieldMappingState(datasetState.parsedDataset);
@@ -73,7 +77,37 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
     setRaceYear,
     racePlaying,
     setRacePlaying,
+    viewSnapshot,
+    applyViewSnapshot,
   } = useCanonicalEditorViewState();
+  const currentSnapshot = useMemo<CanonicalEditorSnapshot>(() => ({
+    version: 1,
+    projectId: projectKey,
+    draft: draftSnapshot,
+    view: viewSnapshot,
+    fieldMapping: fieldMapping.fieldMappingSnapshot,
+    chartControls: chartControls.chartControlsSnapshot,
+    dataset: datasetState.datasetSnapshot,
+  }), [
+    projectKey,
+    draftSnapshot,
+    viewSnapshot,
+    fieldMapping.fieldMappingSnapshot,
+    chartControls.chartControlsSnapshot,
+    datasetState.datasetSnapshot,
+  ]);
+  const applySnapshot = useCallback((snapshot: CanonicalEditorSnapshot) => {
+    datasetState.applyDatasetSnapshot(snapshot.dataset);
+    applyDraftSnapshot(snapshot.draft);
+    applyViewSnapshot(snapshot.view);
+    fieldMapping.applyFieldMappingSnapshot(snapshot.fieldMapping);
+    chartControls.applyChartControlsSnapshot(snapshot.chartControls);
+  }, [datasetState, applyDraftSnapshot, applyViewSnapshot, fieldMapping, chartControls]);
+  const snapshotState = useCanonicalEditorSnapshotState({
+    projectId: projectKey,
+    currentSnapshot,
+    applySnapshot,
+  });
 
   return (
     <div className="h-screen bg-[#F2F2EE] text-[#0B0D14] flex flex-col overflow-hidden font-display">
@@ -86,7 +120,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
           <span className="text-white/50">매출 리포트</span>
           <span className="text-white/30">/</span>
           <span style={{ fontWeight: 500 }}>2026 Q1 지역별 매출</span>
-          <span className="ml-2 inline-flex items-center gap-1 text-[9.5px] px-1.5 py-0.5 rounded bg-white/10 text-white/70"><span className="w-1 h-1 rounded-full bg-[#65C466]" />자동 저장 · 14:22</span>
+          <span className="ml-2 inline-flex items-center gap-1 text-[9.5px] px-1.5 py-0.5 rounded bg-white/10 text-white/70"><span className="w-1 h-1 rounded-full" style={{ background: snapshotState.hasUnsavedChanges ? "#F2B705" : "#65C466" }} />{snapshotState.savedLabel}</span>
         </div>
 
         <nav className="mx-auto flex items-center gap-1 bg-white/[0.07] rounded-full p-1">
@@ -101,11 +135,11 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
         </nav>
 
         <div className="flex items-center gap-1">
-          <button className="w-8 h-8 rounded-md hover:bg-white/10 flex items-center justify-center"><Undo2 size={14} /></button>
+          <button onClick={snapshotState.resetSnapshot} className="w-8 h-8 rounded-md hover:bg-white/10 flex items-center justify-center"><Undo2 size={14} /></button>
           <button className="w-8 h-8 rounded-md hover:bg-white/10 flex items-center justify-center"><Redo2 size={14} /></button>
           <div className="w-px h-5 bg-white/10 mx-1" />
           <button onClick={() => setRecOpen(true)} className="h-8 px-3 rounded-md text-[11.5px] text-white/80 hover:bg-white/10 inline-flex items-center gap-1.5"><Sparkles size={12} className="text-[#FF6A3D]" /> 차트 추천</button>
-          <button className="h-8 px-3 rounded-md text-[11.5px] text-white/80 hover:bg-white/10 inline-flex items-center gap-1.5"><Save size={12} /> 저장</button>
+          <button onClick={snapshotState.saveSnapshot} className="h-8 px-3 rounded-md text-[11.5px] text-white/80 hover:bg-white/10 inline-flex items-center gap-1.5"><Save size={12} /> 저장</button>
           <div className="relative">
             <button onClick={() => setExportOpen((v) => !v)} className="h-8 pl-3.5 pr-3 rounded-md bg-white text-[#0B0D14] text-[11.5px] inline-flex items-center gap-1.5" style={{ fontWeight: 500 }}>
               내보내기 <ChevronDown size={12} />

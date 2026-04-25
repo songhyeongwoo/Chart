@@ -37,6 +37,9 @@ export function useCanonicalFieldMappingState(parsedDataset?: CanonicalParsedDat
   const setMappingField = (role: keyof CanonicalFieldMapping, fieldKey: string) => {
     setMapping((current) => ({ ...current, [role]: fieldKey }));
   };
+  const applyFieldMappingSnapshot = (snapshot: CanonicalFieldMapping) => {
+    setMapping(snapshot);
+  };
 
   return {
     ...dataEditor,
@@ -54,7 +57,9 @@ export function useCanonicalFieldMappingState(parsedDataset?: CanonicalParsedDat
     columnCount: parsedDataset?.columnCount ?? 7,
     sourceFilename: parsedDataset?.sourceFilename ?? "sales_2026_q1",
     hasParsedDataset: Boolean(parsedDataset),
+    fieldMappingSnapshot: effectiveMapping,
     setMappingField,
+    applyFieldMappingSnapshot,
   };
 }
 

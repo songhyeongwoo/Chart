@@ -14,6 +14,11 @@ type CanonicalDraftText = {
   caption: string;
 };
 
+export type CanonicalEditorDraftSnapshot = CanonicalDraftText & {
+  chart: CanonicalChartType;
+  futureChartType: FutureChartFeatureType;
+};
+
 const defaultTextByChart: Record<CanonicalChartType, CanonicalDraftText> = {
   bar: {
     title: "지역별 월평균 매출 지수",
@@ -59,6 +64,21 @@ export function useCanonicalEditorDraftState() {
   const setTitle = (title: string) => setText((current) => ({ ...current, title }));
   const setSubtitle = (subtitle: string) => setText((current) => ({ ...current, subtitle }));
   const setCaption = (caption: string) => setText((current) => ({ ...current, caption }));
+  const draftSnapshot: CanonicalEditorDraftSnapshot = {
+    chart,
+    futureChartType,
+    title: text.title,
+    subtitle: text.subtitle,
+    caption: text.caption,
+  };
+  const applyDraftSnapshot = (snapshot: CanonicalEditorDraftSnapshot) => {
+    setFutureChartTypeState(snapshot.futureChartType);
+    setText({
+      title: snapshot.title,
+      subtitle: snapshot.subtitle,
+      caption: snapshot.caption,
+    });
+  };
 
   return {
     chart,
@@ -71,5 +91,7 @@ export function useCanonicalEditorDraftState() {
     setTitle,
     setSubtitle,
     setCaption,
+    draftSnapshot,
+    applyDraftSnapshot,
   };
 }

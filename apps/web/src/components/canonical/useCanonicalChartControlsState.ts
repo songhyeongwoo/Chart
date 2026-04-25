@@ -11,7 +11,7 @@ export type CanonicalLayoutAspectRatio = "16:9" | "4:3" | "1:1";
 export type CanonicalLayoutDensity = "compact" | "balanced" | "comfortable";
 export type CanonicalSortMode = "value-desc" | "original" | "name";
 
-type CanonicalChartControlsState = {
+export type CanonicalChartControlsSnapshot = {
   labels: {
     mode: CanonicalLabelMode;
     format: CanonicalLabelFormat;
@@ -40,7 +40,7 @@ type CanonicalChartControlsState = {
   };
 };
 
-const initialControls: CanonicalChartControlsState = {
+const initialControls: CanonicalChartControlsSnapshot = {
   labels: {
     mode: "both",
     format: "number",
@@ -113,7 +113,7 @@ function toFutureAspectRatio(aspectRatio: CanonicalLayoutAspectRatio) {
 }
 
 export function useCanonicalChartControlsState() {
-  const [controls, setControls] = useState<CanonicalChartControlsState>(initialControls);
+  const [controls, setControls] = useState<CanonicalChartControlsSnapshot>(initialControls);
 
   const setLabelMode = (mode: CanonicalLabelMode) =>
     setControls((current) => ({ ...current, labels: { ...current.labels, mode } }));
@@ -135,7 +135,7 @@ export function useCanonicalChartControlsState() {
       ...current,
       labels: { ...current.labels, emphasizeKeyValues: !current.labels.emphasizeKeyValues },
     }));
-  const setAxisOrientation = (orientation: CanonicalChartControlsState["axes"]["orientation"]) =>
+  const setAxisOrientation = (orientation: CanonicalChartControlsSnapshot["axes"]["orientation"]) =>
     setControls((current) => ({
       ...current,
       axes: {
@@ -178,6 +178,9 @@ export function useCanonicalChartControlsState() {
       ...current,
       data: { ...current.data, topN: current.data.topN >= 12 ? 4 : current.data.topN + 1 },
     }));
+  const applyChartControlsSnapshot = (snapshot: CanonicalChartControlsSnapshot) => {
+    setControls(snapshot);
+  };
 
   const labelSize = labelSizeValues[controls.labels.size];
 
@@ -229,6 +232,8 @@ export function useCanonicalChartControlsState() {
         topN: controls.data.topN,
       },
     },
+    chartControlsSnapshot: controls,
+    applyChartControlsSnapshot,
     setAxisOrientation,
     setLegendPosition,
     toggleLabelVisibility,

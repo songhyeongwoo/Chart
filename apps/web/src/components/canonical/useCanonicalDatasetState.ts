@@ -3,12 +3,21 @@
 import { useState } from "react";
 import { parseCanonicalDatasetFile, type CanonicalParsedDataset, type CanonicalParseStatus } from "./canonical-dataset-adapters";
 
+export type CanonicalDatasetSnapshot = {
+  status: CanonicalParseStatus;
+  parsedDataset: CanonicalParsedDataset | null;
+  sourceFilename: string | null;
+  parseError: string | null;
+};
+
 export type CanonicalDatasetState = {
   status: CanonicalParseStatus;
   parsedDataset: CanonicalParsedDataset | null;
   sourceFilename: string | null;
   parseError: string | null;
+  datasetSnapshot: CanonicalDatasetSnapshot;
   parseFile: (file: File) => Promise<void>;
+  applyDatasetSnapshot: (snapshot: CanonicalDatasetSnapshot) => void;
   clearDataset: () => void;
 };
 
@@ -42,13 +51,26 @@ export function useCanonicalDatasetState(): CanonicalDatasetState {
     setSourceFilename(null);
     setParseError(null);
   };
+  const applyDatasetSnapshot = (snapshot: CanonicalDatasetSnapshot) => {
+    setStatus(snapshot.status);
+    setParsedDataset(snapshot.parsedDataset);
+    setSourceFilename(snapshot.sourceFilename);
+    setParseError(snapshot.parseError);
+  };
 
   return {
     status,
     parsedDataset,
     sourceFilename,
     parseError,
+    datasetSnapshot: {
+      status,
+      parsedDataset,
+      sourceFilename,
+      parseError,
+    },
     parseFile,
+    applyDatasetSnapshot,
     clearDataset,
   };
 }

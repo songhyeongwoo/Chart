@@ -481,6 +481,15 @@ Exit criteria:
 - Reset restores the last saved snapshot.
 - No backend persistence is introduced.
 
+Completion note:
+
+- Added a canonical editor snapshot adapter and local snapshot hook for draft, view, field mapping, chart controls, and dataset summary state.
+- Save/reset/re-entry now work at a local-only snapshot level through the existing canonical toolbar status, save button, and undo/reset affordance without mounting the old save/reset UI.
+- Re-entry uses `localStorage` with a project-scoped key such as `canonical-editor:${projectId}`. This is browser-local only and is not backend persistence.
+- Dataset snapshot storage keeps parsed dataset metadata and a bounded row sample rather than the original uploaded file.
+- Existing Chart `handleSave`, `handleReset`, `EditorWorkspaceClient`, backend, auth, DB persistence, and export behavior are still not connected.
+- Before Phase 8 export work, confirm the final export target and make sure the canonical renderer dimensions, palette, labels, legend, canvas mode, and local saved snapshot state are stable.
+
 ### Phase 8: Export UI and real export
 
 Goal:
