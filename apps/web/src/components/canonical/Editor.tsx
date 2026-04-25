@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "./Logo";
-import { BarChart, LineChart, DonutChart, RacingBar, PALETTES, type PaletteKey } from "./Charts";
+import { PALETTES, type PaletteKey } from "./Charts";
+import { CanonicalPreviewChart } from "./CanonicalPreviewChart";
 import {
   isCanonicalChartType,
   type CanonicalAllChartType as AllChartType,
@@ -231,7 +232,14 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
               subtitle={subtitle}
               caption={caption}
               palette={colorMode === "single" ? [singleColor, highlight, singleColor, highlight, singleColor] : PALETTES[palette].colors}
+              fieldMapping={fieldMapping}
+              chartControls={chartControls}
+              colorMode={colorMode}
+              singleColor={singleColor}
+              highlight={highlight}
+              opacity={opacity}
               dark={darkCanvas} showKPI={showKPI} year={raceYear}
+              racePlaying={racePlaying}
             />
           </div>
 
@@ -293,7 +301,39 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
 }
 
 /* ---------- Canvas ---------- */
-function CanvasCard({ chart, title, subtitle, caption, palette, dark, showKPI, year }: { chart: ChartType; title: string; subtitle: string; caption: string; palette: string[]; dark: boolean; showKPI: boolean; year: number }) {
+function CanvasCard({
+  chart,
+  title,
+  subtitle,
+  caption,
+  palette,
+  fieldMapping,
+  chartControls,
+  colorMode,
+  singleColor,
+  highlight,
+  opacity,
+  dark,
+  showKPI,
+  year,
+  racePlaying,
+}: {
+  chart: ChartType;
+  title: string;
+  subtitle: string;
+  caption: string;
+  palette: string[];
+  fieldMapping: CanonicalFieldMappingState;
+  chartControls: CanonicalChartControls;
+  colorMode: ColorMode;
+  singleColor: string;
+  highlight: string;
+  opacity: number;
+  dark: boolean;
+  showKPI: boolean;
+  year: number;
+  racePlaying: boolean;
+}) {
   const titles = {
     bar: { kpi: "전년 대비 +12.4%" },
     line: { kpi: "피크 10월 · +38%" },
@@ -322,10 +362,23 @@ function CanvasCard({ chart, title, subtitle, caption, palette, dark, showKPI, y
           )}
         </div>
         <div className="mt-5">
-          {chart === "bar" && <BarChart className="w-full" palette={palette} />}
-          {chart === "line" && <LineChart className="w-full" palette={palette} />}
-          {chart === "donut" && <DonutChart className="w-full" palette={palette} />}
-          {chart === "race" && <RacingBar className="w-full" palette={palette} year={year} />}
+          <CanonicalPreviewChart
+            chart={chart}
+            title={title}
+            subtitle={subtitle}
+            caption={caption}
+            fieldMapping={fieldMapping}
+            chartControls={chartControls}
+            palette={palette}
+            colorMode={colorMode}
+            singleColor={singleColor}
+            highlight={highlight}
+            opacity={opacity}
+            darkCanvas={dark}
+            showKPI={showKPI}
+            raceYear={year}
+            racePlaying={racePlaying}
+          />
         </div>
         <div className="mt-4 pt-3 border-t flex items-center justify-between text-[10px]" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)", color: sub }}>
           <span>출처 · {caption}</span>

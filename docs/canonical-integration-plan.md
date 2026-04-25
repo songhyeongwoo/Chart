@@ -435,6 +435,15 @@ Exit criteria:
 - Renderer responds to chart type, bindings, text, style, labels, axes, legend, and layout.
 - Visual difference from canonical mock is intentional and data-driven only.
 
+Completion note:
+
+- Added a canonical preview renderer adapter that receives canonical chart, field mapping, chart controls, palette/color, canvas, KPI, and racing playback view state.
+- Extended the canonical `Charts.tsx` SVG primitives with optional data props while preserving the same static mock fallback values and visual grammar.
+- `Editor.tsx` now renders the chart canvas through the canonical adapter instead of an inline chart switch, but the canvas shell, spacing, title, caption, and chart framing remain unchanged.
+- The adapter prepares a future `CanonicalPreviewDataset` shape for later `deriveChartData` input, but existing Chart renderer code, old `PreviewChart`, old `PlaceholderChart`, upload parsing, save/reset, backend, and export are still not connected.
+- Static canonical mock fallback remains the default. Renderer drift should be prevented by keeping `Charts.tsx` as the visual source of truth and by adapting future derived data into the canonical dataset shape rather than mounting old chart components.
+- Phase 6 can now move into CSV/XLSX upload parsing while keeping the renderer adapter boundary stable.
+
 ### Phase 6: CSV/XLSX upload parsing
 
 Goal:
