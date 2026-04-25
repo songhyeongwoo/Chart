@@ -11,12 +11,14 @@ The promise is "you arrive at a presentation-ready chart without becoming a char
 - hero copy was too long for Korean line breaks and lost impact before the mock had a chance to sell the product
 - chart results looked like placeholders, so the service felt like a demo instead of a tool people would trust for a report
 - editor zones were functionally present, but they read like a dashboard instead of a chart workspace
+- app screens used explanatory blocks where users expected saved visualizations, file intake, and live editing controls
+- repeated beige panels made landing, hub, upload, and editor feel like the same page instead of a product flow
 
 ## New Concept
-The new direction is "editorial data studio".
-It mixes warm paper surfaces with graphite depth, precise Korean typography, layered product mocks, and export-ready chart canvases.
-Landing is the desire layer.
-Editor is the proof layer.
+The new direction is "Korean chart studio".
+It mixes warm paper surfaces, graphite workspace chrome, precise Korean typography, product-scale chart previews, data intake surfaces, and export-ready canvases.
+Landing creates trust through one clear product scene.
+Editor proves the product through local-state chart editing.
 
 ## Brand Keywords
 - Korean-first
@@ -32,6 +34,8 @@ Editor is the proof layer.
 - every major screen needs one dominant scene, not a grid of equal cards
 - hero must show chart canvas, inspector, and data flow in one glance
 - supporting information should appear as rails, strips, chips, or floating notes
+- projects must start from saved visualization thumbnails, not explanation modules
+- upload must look like an input step with encoding, preview, columns, and recommendation handoff
 
 ### Typography
 - use Korean sans-serif only
@@ -62,6 +66,8 @@ Editor is the proof layer.
 - center canvas is the hero of the workspace
 - right inspector should feel dense, exact, and tool-like
 - chart type changes must visibly alter inspector language and preview behavior
+- top-level editor tabs are recommendation, detailed edit, and data edit
+- static export buttons are PNG/JPG/SVG; racing bar shows MP4/GIF as prepared UI, not implemented export
 
 ## Page Intent
 
