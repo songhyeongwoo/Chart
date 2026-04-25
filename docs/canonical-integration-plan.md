@@ -457,6 +457,17 @@ Exit criteria:
 - XLSX works after CSV.
 - Errors remain inside canonical UI.
 
+Completion note:
+
+- Added a canonical dataset parsing adapter and dataset state hook for local client-side file parsing.
+- CSV/TSV parsing now supports comma/tab delimiters, CRLF/LF newlines, quoted fields, and escaped quotes. Known limitations remain around advanced CSV dialects such as custom delimiters, multi-character delimiters, comments, formula evaluation, locale-specific encodings, and very large streaming files.
+- XLSX/XLS fallback is explicit because the current web app has no XLSX dependency. The adapter returns an unsupported status and keeps the canonical modal in its existing notice/status surfaces.
+- `UploadModal` now connects its existing dropzone/button to a hidden file input and drag/drop handler without changing the modal layout or visual structure.
+- Parsed dataset shape now includes columns, rows, inferred column type, missing/issue counts, numeric stats, unique/sample values, source filename, parse status, and parse error.
+- Parsed CSV data can now feed canonical data table rows/columns and field mapping options through the existing field mapping hook, while mock rows/columns remain the fallback.
+- The chart preview renderer still keeps its static canonical fallback; existing Chart `deriveChartData`, renderer, upload flow, save/reset, export, backend, auth, DB, and persistence are still not connected.
+- Before Phase 7, verify whether parsed local datasets should be included in the saved snapshot/re-entry model or remain transient until backend persistence is designed.
+
 ### Phase 7: Save, reset, and re-entry
 
 Goal:

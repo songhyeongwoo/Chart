@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "./Logo";
 import { PALETTES, type PaletteKey } from "./Charts";
@@ -13,6 +13,7 @@ import {
   type CanonicalEditorTab as EditorTab,
 } from "./editor-adapters";
 import { useCanonicalChartControlsState, type CanonicalChartControls } from "./useCanonicalChartControlsState";
+import { useCanonicalDatasetState, type CanonicalDatasetState } from "./useCanonicalDatasetState";
 import { useCanonicalEditorDraftState } from "./useCanonicalEditorDraftState";
 import { useCanonicalEditorViewState } from "./useCanonicalEditorViewState";
 import { useCanonicalFieldMappingState, type CanonicalFieldMappingState } from "./useCanonicalFieldMappingState";
@@ -42,7 +43,8 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
     subtitle,
     caption,
   } = useCanonicalEditorDraftState();
-  const fieldMapping = useCanonicalFieldMappingState();
+  const datasetState = useCanonicalDatasetState();
+  const fieldMapping = useCanonicalFieldMappingState(datasetState.parsedDataset);
   const chartControls = useCanonicalChartControlsState();
   const {
     exportOpen,
@@ -129,11 +131,11 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Table size={11} className="text-[#FF6A3D] shrink-0" />
-                  <span className="text-[11.5px] truncate" style={{ fontWeight: 500 }}>sales_2026_q1</span>
+                  <span className="text-[11.5px] truncate" style={{ fontWeight: 500 }}>{fieldMapping.sourceFilename}</span>
                 </div>
                 <span className="text-[9px] text-white/40 font-mono-num">124KB</span>
               </div>
-              <div className="text-[10px] text-white/50 mt-1 font-mono-num">412행 · 7열 · UTF-8</div>
+              <div className="text-[10px] text-white/50 mt-1 font-mono-num">{fieldMapping.rowCount}행 · {fieldMapping.columnCount}열 · UTF-8</div>
               <div className="mt-2 flex gap-1">
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#1F3FFF] text-white">연결됨</span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.08] text-white/70">미리보기</span>
@@ -264,7 +266,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
           )}
 
           <div className="h-7 shrink-0 border-t border-black/[0.06] bg-white px-5 flex items-center text-[10px] text-[#5B6173] gap-4">
-            <span className="font-mono-num">412행 · 7열</span>
+            <span className="font-mono-num">{fieldMapping.rowCount}행 · {fieldMapping.columnCount}열</span>
             <span className="w-px h-3 bg-black/10" />
             <span>팔레트 · {colorMode === "single" ? "단색" : PALETTES[palette].name}</span>
             <span className="w-px h-3 bg-black/10" />
@@ -293,7 +295,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
         </>}
       </div>
 
-      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} onGoRecommend={() => { setUploadOpen(false); setRecOpen(true); }} />}
+      {uploadOpen && <UploadModal datasetState={datasetState} onClose={() => setUploadOpen(false)} onGoRecommend={() => { setUploadOpen(false); setRecOpen(true); }} />}
       {recOpen && <RecommendDrawer onClose={() => setRecOpen(false)} onPick={(c) => { setChart(c); setRecOpen(false); }} />}
       {galleryOpen && <ChartGallery onClose={() => setGalleryOpen(false)} onPick={(c) => { if (isCanonicalChartType(c)) setChart(c); setGalleryOpen(false); }} />}
     </div>
@@ -846,7 +848,25 @@ function ExportMenu({ chart, onClose }: { chart: ChartType; onClose: () => void 
   );
 }
 
-function UploadModal({ onClose, onGoRecommend }: { onClose: () => void; onGoRecommend: () => void }) {
+function UploadModal({ datasetState, onClose, onGoRecommend }: { datasetState: CanonicalDatasetState; onClose: () => void; onGoRecommend: () => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const parsedDataset = datasetState.parsedDataset;
+  const previewColumns = parsedDataset?.columns.slice(0, 5).map((column) => [column.n, column.t]) ?? [["지역","범주"],["월","날짜"],["매출","숫자"],["전년","숫자"],["성장률","숫자"]];
+  const previewRows = parsedDataset?.rows.slice(0, 3).map((row) => previewColumns.map(([column]) => String(row[column] ?? ""))) ?? [["서울", "1월", "92", "78", "+18%"], ["경기", "1월", "86", "70", "+22%"], ["부산", "1월", "78", "62", "+25%"]];
+  const statusLabel = datasetState.status === "parsing"
+    ? "분석 중"
+    : datasetState.status === "ready"
+      ? `${parsedDataset?.encoding ?? "UTF-8"} · ${parsedDataset?.rowCount ?? 0}행`
+      : datasetState.status === "unsupported"
+        ? "지원 대기"
+        : datasetState.status === "error"
+          ? "확인 필요"
+          : "UTF-8 · 412행";
+  const notice = datasetState.parseError ?? (parsedDataset ? `${parsedDataset.sourceFilename} · 로컬에서 ${parsedDataset.rowCount}행을 분석했습니다.` : "MAC은 개인정보가 포함된 데이터를 업로드하지 않도록 안내합니다.");
+  const handleFile = (file: File | null | undefined) => {
+    if (file) void datasetState.parseFile(file);
+  };
+
   return (
     <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center" onClick={onClose}>
       <div className="w-[680px] bg-white rounded-2xl overflow-hidden font-display" style={{ boxShadow: "0 60px 120px -20px rgba(0,0,0,0.5)" }} onClick={(e) => e.stopPropagation()}>
@@ -860,28 +880,29 @@ function UploadModal({ onClose, onGoRecommend }: { onClose: () => void; onGoReco
 
         <div className="grid grid-cols-[1fr_220px]">
           <div className="p-5">
-            <div className="rounded-xl border-2 border-dashed border-[#0B0D14]/15 bg-gradient-to-b from-[#FBFBF8] to-white p-6 text-center">
+            <div className="rounded-xl border-2 border-dashed border-[#0B0D14]/15 bg-gradient-to-b from-[#FBFBF8] to-white p-6 text-center" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}>
+              <input ref={fileInputRef} type="file" accept=".csv,.tsv,.xlsx,.xls,text/csv,text/tab-separated-values" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
               <div className="mx-auto w-10 h-10 rounded-full bg-[#1F3FFF] text-white flex items-center justify-center"><Plus size={16} /></div>
               <div className="mt-3 text-[13px]" style={{ fontWeight: 500 }}>파일을 여기에 끌어다 놓으세요</div>
               <div className="mt-1 text-[10.5px] text-[#8A90A2]">최대 20MB · CSV · XLSX · TSV · JSON</div>
-              <button className="mt-4 h-9 px-4 rounded-full bg-[#0B0D14] text-white text-[11.5px]" style={{ fontWeight: 500 }}>파일 선택</button>
+              <button onClick={() => fileInputRef.current?.click()} className="mt-4 h-9 px-4 rounded-full bg-[#0B0D14] text-white text-[11.5px]" style={{ fontWeight: 500 }}>파일 선택</button>
             </div>
 
             <div className="mt-4 rounded-lg border border-black/[0.06] overflow-hidden">
               <div className="px-3 py-2 bg-[#F7F8FA] flex items-center justify-between text-[10.5px]">
-                <span className="text-[#5B6173]">감지된 열 · 7개</span>
-                <span className="font-mono-num text-[#8A90A2]">UTF-8 · 412행</span>
+                <span className="text-[#5B6173]">감지된 열 · {parsedDataset?.columnCount ?? 7}개</span>
+                <span className="font-mono-num text-[#8A90A2]">{statusLabel}</span>
               </div>
               <table className="w-full text-[10.5px]">
                 <thead className="text-[9.5px] text-[#8A90A2] bg-white">
-                  <tr>{[["지역","범주"],["월","날짜"],["매출","숫자"],["전년","숫자"],["성장률","숫자"]].map(([c, tp]) => (
+                  <tr>{previewColumns.map(([c, tp]) => (
                     <th key={c} className="text-left px-2.5 py-1.5 font-normal border-t border-black/[0.05]">
                       {c}<span className="ml-1 text-[8.5px]" style={{ color: tp === "숫자" ? "#25A18E" : tp === "날짜" ? "#C2703A" : "#1F3FFF" }}>{tp}</span>
                     </th>
                   ))}</tr>
                 </thead>
                 <tbody className="font-mono-num text-[#0B0D14]">
-                  {[["서울", "1월", "92", "78", "+18%"], ["경기", "1월", "86", "70", "+22%"], ["부산", "1월", "78", "62", "+25%"]].map((row, i) => (
+                  {previewRows.map((row, i) => (
                     <tr key={i} className="border-t border-black/[0.04]">{row.map((v, j) => <td key={j} className="px-2.5 py-1.5">{v}</td>)}</tr>
                   ))}
                 </tbody>
@@ -915,7 +936,7 @@ function UploadModal({ onClose, onGoRecommend }: { onClose: () => void; onGoReco
         </div>
 
         <div className="p-4 border-t border-black/[0.06] flex items-center justify-between bg-[#FBFBF8]">
-          <div className="text-[10.5px] text-[#5B6173]">MAC은 개인정보가 포함된 데이터를 업로드하지 않도록 안내합니다.</div>
+          <div className="text-[10.5px] text-[#5B6173]">{notice}</div>
           <button onClick={onGoRecommend} className="h-9 pl-4 pr-3 rounded-full bg-[#0B0D14] text-white text-[12px] inline-flex items-center gap-2" style={{ fontWeight: 500 }}>
             차트 추천 보기 <ArrowRight size={13} />
           </button>
@@ -1005,7 +1026,13 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
     missingValueCount,
     issueCount,
     mappingColumns,
+    rowCount,
+    columnCount,
+    sourceFilename,
   } = fieldMapping;
+  const gridTemplateColumns = `40px repeat(${columnCount}, minmax(0, 1fr))`;
+  const remainingRowCount = Math.max(rowCount - rows.length, 0);
+  const effectiveSelectedCol = columns.some((column) => column.n === selectedCol) ? selectedCol : selectedColumn.n;
 
   return (
     <>
@@ -1013,8 +1040,8 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
         {/* Sub toolbar */}
         <div className="h-[44px] shrink-0 px-5 flex items-center gap-2.5 border-b border-black/[0.06] bg-white">
           <div className="flex items-center gap-1.5 text-[11px] text-[#0B0D14]" style={{ fontWeight: 500 }}>
-            <Table size={12} className="text-[#FF6A3D]" /> sales_2026_q1
-            <span className="text-[#8A90A2] ml-1 font-mono-num">412행 · 7열</span>
+            <Table size={12} className="text-[#FF6A3D]" /> {sourceFilename}
+            <span className="text-[#8A90A2] ml-1 font-mono-num">{rowCount}행 · {columnCount}열</span>
             <span className="ml-1 inline-flex rounded-md border border-black/[0.06] overflow-hidden">
               {(["UTF-8", "EUC-KR"] as const).map((e) => (
                 <button key={e} onClick={() => setEncoding(e)} className={`px-1.5 h-5 text-[9.5px] font-mono-num ${encoding === e ? "bg-[#0B0D14] text-white" : "text-[#5B6173] hover:bg-black/[0.04]"}`}>{e}</button>
@@ -1029,7 +1056,7 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
           <button className="h-7 px-2.5 rounded-md text-[10.5px] text-[#3D4253] hover:bg-black/[0.04] inline-flex items-center gap-1.5"><Filter size={11} /> 필터</button>
           <div className="w-px h-5 bg-black/10" />
           <div className="flex items-center gap-1 text-[10.5px] text-[#5B6173]">
-            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#65C466]" /> 정상 {412 - missingValueCount - (issueCount - missingValueCount)}</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#65C466]" /> 정상 {rowCount - missingValueCount - (issueCount - missingValueCount)}</span>
             <span className="inline-flex items-center gap-1 ml-2"><span className="w-1.5 h-1.5 rounded-full bg-[#F2B705]" /> 결측 {missingValueCount}</span>
             <span className="inline-flex items-center gap-1 ml-2"><span className="w-1.5 h-1.5 rounded-full bg-[#FF6A3D]" /> 의심 {issueCount - missingValueCount}</span>
           </div>
@@ -1044,17 +1071,17 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
         <div className="flex-1 min-h-0 overflow-auto p-6">
           <div className="mx-auto max-w-[1100px] rounded-xl border border-black/[0.06] bg-white overflow-hidden" style={{ boxShadow: "0 24px 60px -40px rgba(15,20,55,0.18)" }}>
             {/* column letters */}
-            <div className="grid bg-[#FBFBF8] border-b border-black/[0.05]" style={{ gridTemplateColumns: `40px repeat(7, minmax(0, 1fr))` }}>
+            <div className="grid bg-[#FBFBF8] border-b border-black/[0.05]" style={{ gridTemplateColumns }}>
               <div className="px-2 py-1.5 text-[9px] text-[#8A90A2] font-mono-num text-center border-r border-black/[0.05]">#</div>
               {columns.map((c) => (
                 <div key={c.k} className="px-3 py-1.5 text-[9px] text-[#8A90A2] font-mono-num border-r last:border-r-0 border-black/[0.05] tracking-[0.18em]">{c.k}</div>
               ))}
             </div>
             {/* column header row */}
-            <div className="grid bg-white border-b border-black/[0.06] sticky top-0" style={{ gridTemplateColumns: `40px repeat(7, minmax(0, 1fr))` }}>
+            <div className="grid bg-white border-b border-black/[0.06] sticky top-0" style={{ gridTemplateColumns }}>
               <div className="px-2 py-2.5 text-[9.5px] text-[#8A90A2] font-mono-num text-center border-r border-black/[0.05]"></div>
               {columns.map((c) => {
-                const active = c.n === selectedCol;
+                const active = c.n === effectiveSelectedCol;
                 return (
                   <button
                     key={c.n}
@@ -1077,12 +1104,12 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
             {/* rows */}
             <div>
               {rows.map((r, i) => (
-                <div key={i} className={`grid text-[11px] ${i % 2 ? "bg-[#FBFBF8]" : "bg-white"} hover:bg-[#EEF1FF]/50`} style={{ gridTemplateColumns: `40px repeat(7, minmax(0, 1fr))` }}>
+                <div key={i} className={`grid text-[11px] ${i % 2 ? "bg-[#FBFBF8]" : "bg-white"} hover:bg-[#EEF1FF]/50`} style={{ gridTemplateColumns }}>
                   <div className="px-2 py-2 text-[9px] text-[#8A90A2] font-mono-num text-center border-r border-black/[0.04]">{i + 1}</div>
                   {colHeaders.map((h) => {
                     const v = (r as any)[h];
                     const isMissing = v === null || v === "" || v === "—";
-                    const active = selectedCol === colNameMap[h];
+                    const active = effectiveSelectedCol === colNameMap[h];
                     const cellActive = selectedCell?.r === i && selectedCell?.c === h;
                     return (
                       <button
@@ -1096,9 +1123,9 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
                   })}
                 </div>
               ))}
-              <div className="grid border-t border-black/[0.04] bg-[#FBFBF8]" style={{ gridTemplateColumns: `40px repeat(7, minmax(0, 1fr))` }}>
+              <div className="grid border-t border-black/[0.04] bg-[#FBFBF8]" style={{ gridTemplateColumns }}>
                 <div className="px-2 py-2 text-[9px] text-[#8A90A2] font-mono-num text-center border-r border-black/[0.04]">…</div>
-                <div className="col-span-7 px-3 py-2 text-[10.5px] text-[#5B6173] font-mono-num">남은 395행 · 스크롤하여 더 보기</div>
+                <div className="px-3 py-2 text-[10.5px] text-[#5B6173] font-mono-num" style={{ gridColumn: `span ${columnCount} / span ${columnCount}` }}>남은 {remainingRowCount}행 · 스크롤하여 더 보기</div>
               </div>
             </div>
           </div>
@@ -1106,13 +1133,13 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
 
         {/* status footer */}
         <div className="h-7 shrink-0 border-t border-black/[0.06] bg-white px-5 flex items-center text-[10px] text-[#5B6173] gap-4">
-          <span className="font-mono-num">412행 · 7열</span>
+          <span className="font-mono-num">{rowCount}행 · {columnCount}열</span>
           <span className="w-px h-3 bg-black/10" />
-          <span>선택한 열 · {selectedCol}</span>
+          <span>선택한 열 · {effectiveSelectedCol}</span>
           {selectedCell && (
             <>
               <span className="w-px h-3 bg-black/10" />
-              <span className="font-mono-num">선택한 셀 · R{selectedCell.r + 1} · {colNameMap[selectedCell.c]}</span>
+              <span className="font-mono-num">선택한 셀 · R{selectedCell.r + 1} · {colNameMap[selectedCell.c] ?? selectedCell.c}</span>
             </>
           )}
           <span className="w-px h-3 bg-black/10" />
@@ -1128,8 +1155,8 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
           <div className="mt-0.5 text-[14px]" style={{ fontWeight: 500 }}>데이터 구조</div>
           <div className="mt-2 grid grid-cols-3 gap-1.5">
             {[
-              { l: "행", v: "412" },
-              { l: "열", v: "7" },
+              { l: "행", v: String(rowCount) },
+              { l: "열", v: String(columnCount) },
               { l: "결측", v: String(missingValueCount) },
             ].map((s) => (
               <div key={s.l} className="rounded-md bg-[#F6F7F9] px-2 py-1.5">
@@ -1145,7 +1172,7 @@ function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMappi
             <div className="flex items-center gap-2">
               <span className="w-1 h-5 rounded-full bg-[#25A18E]" />
               <div className="flex-1 min-w-0">
-                <div className="text-[12px]" style={{ fontWeight: 500 }}>{selectedCol}</div>
+                <div className="text-[12px]" style={{ fontWeight: 500 }}>{effectiveSelectedCol}</div>
                 <div className="text-[10px] text-[#8A90A2] mt-0.5">{selectedColumn.t} · {selectedColumn.unit ?? "값"} · {selectedColumn.range ?? "분류"}</div>
               </div>
               <button className="text-[10px] text-[#5B6173] hover:text-[#0B0D14]">이름 변경</button>
