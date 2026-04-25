@@ -1,0 +1,53 @@
+"use client";
+
+import { useState } from "react";
+import type { PaletteKey } from "./Charts";
+import type { CanonicalChartType, CanonicalColorMode } from "./editor-adapters";
+
+export function useCanonicalEditorViewState() {
+  const [chart, setChart] = useState<CanonicalChartType>("bar");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [recOpen, setRecOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [colorMode, setColorMode] = useState<CanonicalColorMode>("category");
+  const [palette, setPalette] = useState<PaletteKey>("basicBlue");
+  const [singleColor, setSingleColor] = useState("#1F3FFF");
+  const [highlight, setHighlight] = useState("#FF6A3D");
+  const [opacity, setOpacity] = useState(1);
+  const [darkCanvas, setDarkCanvas] = useState(false);
+  const [showKPI, setShowKPI] = useState(false);
+  const [raceYear, setRaceYear] = useState(2024);
+  const [racePlaying, setRacePlaying] = useState(true);
+
+  return {
+    chart,
+    setChart,
+    exportOpen,
+    setExportOpen,
+    recOpen,
+    setRecOpen,
+    uploadOpen,
+    setUploadOpen,
+    galleryOpen,
+    setGalleryOpen,
+    colorMode,
+    setColorMode,
+    palette,
+    setPalette,
+    singleColor,
+    setSingleColor,
+    highlight,
+    setHighlight,
+    opacity,
+    setOpacity,
+    darkCanvas,
+    setDarkCanvas,
+    showKPI,
+    setShowKPI,
+    raceYear,
+    setRaceYear,
+    racePlaying,
+    setRacePlaying,
+  };
+}

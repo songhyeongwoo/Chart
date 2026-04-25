@@ -349,6 +349,15 @@ Exit criteria:
 - All current mock interactions still work.
 - No existing Chart feature is connected yet.
 
+Completion note:
+
+- Added canonical adapter helpers for chart type naming and route tab normalization.
+- Added `useCanonicalEditorViewState` for editor-only view/mock state such as chart type, modals, palette, canvas mode, KPI display, and racing playback state.
+- Added `useCanonicalDataEditorState` for spreadsheet-only selection state and encoding state.
+- `Editor.tsx` still renders the same canonical JSX/className/layout structure, but its local state is now ready to be replaced or hydrated by a Phase 2 functional adapter.
+- Existing Chart editor state, handlers, renderer, upload parsing, save/reset, backend, and export behavior are still not connected.
+- Phase 2 can now start by mapping canonical `chart` through the chart type adapter and wiring title/subtitle/caption state into the existing canonical controls.
+
 ### Phase 2: Chart type and text local state
 
 Goal:
@@ -478,4 +487,3 @@ Exit criteria:
 - Prefer additive files such as canonical integration hooks/adapters over invasive rewrites.
 - If a phase breaks parity, revert that phase's adapter and keep the UI-only canonical component intact.
 - Do not connect backend persistence until local save/reset behavior is stable.
-

@@ -4,11 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "./Logo";
 import { BarChart, LineChart, DonutChart, RacingBar, PALETTES, type PaletteKey } from "./Charts";
+import {
+  isCanonicalChartType,
+  type CanonicalAllChartType as AllChartType,
+  type CanonicalChartType as ChartType,
+  type CanonicalColorMode as ColorMode,
+  type CanonicalEditorTab as EditorTab,
+} from "./editor-adapters";
+import { useCanonicalDataEditorState } from "./useCanonicalDataEditorState";
+import { useCanonicalEditorViewState } from "./useCanonicalEditorViewState";
 import { ChevronLeft, Save, Play, Pause, Undo2, Redo2, Sparkles, ChevronDown, Share2, Plus, X, Type, Table, Layers, Palette, Axis3D, Grid3x3, Tag as TagIcon, Layout, Download, Eye, Check, ArrowRight, LayoutGrid, Search, Filter, AlertTriangle, RefreshCw, Wand2 } from "lucide-react";
-
-type ChartType = "bar" | "line" | "donut" | "race";
-type AllChartType = ChartType | "area" | "pie" | "scatter" | "heatmap" | "table" | "map" | "metric" | "timeline";
-type ColorMode = "single" | "category" | "sequential" | "highlight" | "custom";
 
 const PRIMARY_CHARTS: { k: ChartType; l: string }[] = [
   { k: "bar", l: "막대" }, { k: "line", l: "선" }, { k: "donut", l: "도넛" }, { k: "race", l: "레이싱" },
@@ -24,24 +29,39 @@ const CHART_GALLERY: { group: string; items: { k: AllChartType; l: string; soon?
   { group: "표 · 지표",    items: [{ k: "table", l: "표", soon: true }, { k: "metric", l: "카드 지표", soon: true }] },
 ];
 
-type EditorTab = "recommend" | "edit" | "data";
 export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBack: () => void; tab?: EditorTab; onTabChange?: (t: EditorTab) => void; projectId?: string }) {
   void projectId;
   const setTab = (t: EditorTab) => onTabChange?.(t);
-  const [chart, setChart] = useState<ChartType>("bar");
-  const [exportOpen, setExportOpen] = useState(false);
-  const [recOpen, setRecOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [colorMode, setColorMode] = useState<ColorMode>("category");
-  const [palette, setPalette] = useState<PaletteKey>("basicBlue");
-  const [singleColor, setSingleColor] = useState("#1F3FFF");
-  const [highlight, setHighlight] = useState("#FF6A3D");
-  const [opacity, setOpacity] = useState(1);
-  const [darkCanvas, setDarkCanvas] = useState(false);
-  const [showKPI, setShowKPI] = useState(false);
-  const [raceYear, setRaceYear] = useState(2024);
-  const [racePlaying, setRacePlaying] = useState(true);
+  const {
+    chart,
+    setChart,
+    exportOpen,
+    setExportOpen,
+    recOpen,
+    setRecOpen,
+    uploadOpen,
+    setUploadOpen,
+    galleryOpen,
+    setGalleryOpen,
+    colorMode,
+    setColorMode,
+    palette,
+    setPalette,
+    singleColor,
+    setSingleColor,
+    highlight,
+    setHighlight,
+    opacity,
+    setOpacity,
+    darkCanvas,
+    setDarkCanvas,
+    showKPI,
+    setShowKPI,
+    raceYear,
+    setRaceYear,
+    racePlaying,
+    setRacePlaying,
+  } = useCanonicalEditorViewState();
 
   return (
     <div className="h-screen bg-[#F2F2EE] text-[#0B0D14] flex flex-col overflow-hidden font-display">
@@ -250,7 +270,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
 
       {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} onGoRecommend={() => { setUploadOpen(false); setRecOpen(true); }} />}
       {recOpen && <RecommendDrawer onClose={() => setRecOpen(false)} onPick={(c) => { setChart(c); setRecOpen(false); }} />}
-      {galleryOpen && <ChartGallery onClose={() => setGalleryOpen(false)} onPick={(c) => { if (["bar","line","donut","race"].includes(c)) setChart(c as ChartType); setGalleryOpen(false); }} />}
+      {galleryOpen && <ChartGallery onClose={() => setGalleryOpen(false)} onPick={(c) => { if (isCanonicalChartType(c)) setChart(c); setGalleryOpen(false); }} />}
     </div>
   );
 }
@@ -913,9 +933,7 @@ function DataEditor({ onApply }: { onApply: () => void }) {
     { 지역: "경남",   월: "2026-01", 매출: 312,  전년: 274,  성장률: "+13.9%",  카테고리: "리테일",  브랜드: "MAC" },
     { 지역: "제주",   월: "2026-01", 매출: 124,  전년: 108,  성장률: "+14.8%",  카테고리: "리테일",  브랜드: "MAC" },
   ];
-  const [selectedCol, setSelectedCol] = useState("매출");
-  const [selectedCell, setSelectedCell] = useState<{ r: number; c: string } | null>({ r: 4, c: "전년" });
-  const [encoding, setEncoding] = useState<"UTF-8" | "EUC-KR">("UTF-8");
+  const { selectedCol, setSelectedCol, selectedCell, setSelectedCell, encoding, setEncoding } = useCanonicalDataEditorState();
   const colHeaders = ["지역", "월", "매출", "전년", "성장률", "카테고리", "브랜드"];
   const colNameMap: Record<string, string> = { 지역: "지역", 월: "월", 매출: "매출", 전년: "전년 매출", 성장률: "성장률", 카테고리: "카테고리", 브랜드: "브랜드" };
 

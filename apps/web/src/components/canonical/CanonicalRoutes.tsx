@@ -4,8 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Editor } from "./Editor";
 import { Landing } from "./Landing";
 import { Workspace } from "./Workspace";
-
-type EditorTab = "recommend" | "edit" | "data";
+import { toCanonicalEditorTab } from "./editor-adapters";
 
 export function CanonicalLandingRoute() {
   const router = useRouter();
@@ -38,8 +37,7 @@ export function CanonicalWorkspaceRoute() {
 export function CanonicalEditorRoute({ projectId = "demo-project" }: { projectId?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const rawTab = searchParams.get("tab");
-  const tab: EditorTab = rawTab === "recommend" || rawTab === "data" ? rawTab : "edit";
+  const tab = toCanonicalEditorTab(searchParams.get("tab"));
 
   return (
     <Editor
