@@ -501,6 +501,16 @@ Exit criteria:
 - Export respects final renderer, dimensions, palette, labels, legend, and canvas mode.
 - Export failures and loading states are shown in canonical modal styling.
 
+Completion note:
+
+- Added a canonical client-side export adapter and export state hook for the first real export path.
+- SVG export is now connected to the canonical preview renderer's actual SVG element through a canvas target ref and downloads via `Blob` plus `URL.createObjectURL`.
+- The generated filename uses the project id, canonical chart type, and timestamp, for example `mac-demo-project-bar-2026-04-25-143000.svg`.
+- Export status is local UI state only: idle, exporting, success, error, unsupported, last exported time, filename, and error message.
+- PNG, JPG, PDF, MP4, and GIF export remain unimplemented. Unsupported formats do not call server or renderer export code.
+- Backend, auth, DB, server-side export, and old Chart export UI remain disconnected.
+- Next steps can either add PNG raster export from the canonical SVG or connect real derived chart data into the canonical renderer before broadening export formats.
+
 ## 12. Visual Parity Rules for Every Phase
 
 - Do not replace canonical `Editor.tsx` layout with `EditorShell`.

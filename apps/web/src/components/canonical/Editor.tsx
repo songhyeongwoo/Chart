@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "./Logo";
 import { PALETTES, type PaletteKey } from "./Charts";
@@ -18,6 +18,7 @@ import { useCanonicalDatasetState, type CanonicalDatasetState } from "./useCanon
 import { useCanonicalEditorDraftState } from "./useCanonicalEditorDraftState";
 import { useCanonicalEditorSnapshotState } from "./useCanonicalEditorSnapshotState";
 import { useCanonicalEditorViewState } from "./useCanonicalEditorViewState";
+import { useCanonicalExportState, type CanonicalExportState } from "./useCanonicalExportState";
 import { useCanonicalFieldMappingState, type CanonicalFieldMappingState } from "./useCanonicalFieldMappingState";
 import { ChevronLeft, Save, Play, Pause, Undo2, Redo2, Sparkles, ChevronDown, Share2, Plus, X, Type, Table, Layers, Palette, Axis3D, Grid3x3, Tag as TagIcon, Layout, Download, Eye, Check, ArrowRight, LayoutGrid, Search, Filter, AlertTriangle, RefreshCw, Wand2 } from "lucide-react";
 
@@ -38,6 +39,7 @@ const CHART_GALLERY: { group: string; items: { k: AllChartType; l: string; soon?
 export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBack: () => void; tab?: EditorTab; onTabChange?: (t: EditorTab) => void; projectId?: string }) {
   const projectKey = projectId ?? "demo-project";
   const setTab = (t: EditorTab) => onTabChange?.(t);
+  const chartExportTargetRef = useRef<HTMLDivElement>(null);
   const {
     chart,
     setChart,
@@ -108,6 +110,11 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
     currentSnapshot,
     applySnapshot,
   });
+  const exportState = useCanonicalExportState({
+    projectId: projectKey,
+    chart,
+    targetRef: chartExportTargetRef,
+  });
 
   return (
     <div className="h-screen bg-[#F2F2EE] text-[#0B0D14] flex flex-col overflow-hidden font-display">
@@ -144,7 +151,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
             <button onClick={() => setExportOpen((v) => !v)} className="h-8 pl-3.5 pr-3 rounded-md bg-white text-[#0B0D14] text-[11.5px] inline-flex items-center gap-1.5" style={{ fontWeight: 500 }}>
               내보내기 <ChevronDown size={12} />
             </button>
-            {exportOpen && <ExportMenu chart={chart} onClose={() => setExportOpen(false)} />}
+            {exportOpen && <ExportMenu chart={chart} exportState={exportState} onClose={() => setExportOpen(false)} />}
           </div>
           <button className="w-8 h-8 rounded-md hover:bg-white/10 flex items-center justify-center"><Share2 size={13} /></button>
           <div className="w-px h-5 bg-white/10 mx-1" />
@@ -274,6 +281,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
               singleColor={singleColor}
               highlight={highlight}
               opacity={opacity}
+              exportTargetRef={chartExportTargetRef}
               dark={darkCanvas} showKPI={showKPI} year={raceYear}
               racePlaying={racePlaying}
             />
@@ -349,6 +357,7 @@ function CanvasCard({
   singleColor,
   highlight,
   opacity,
+  exportTargetRef,
   dark,
   showKPI,
   year,
@@ -365,6 +374,7 @@ function CanvasCard({
   singleColor: string;
   highlight: string;
   opacity: number;
+  exportTargetRef: RefObject<HTMLDivElement | null>;
   dark: boolean;
   showKPI: boolean;
   year: number;
@@ -397,7 +407,7 @@ function CanvasCard({
             </div>
           )}
         </div>
-        <div className="mt-5">
+        <div ref={exportTargetRef} className="mt-5">
           <CanonicalPreviewChart
             chart={chart}
             title={title}
@@ -824,7 +834,7 @@ function ChartGlyph({ t, active }: { t: AllChartType; active: boolean }) {
 }
 
 /* ---------- Overlays ---------- */
-function ExportMenu({ chart, onClose }: { chart: ChartType; onClose: () => void }) {
+function ExportMenu({ chart, exportState, onClose }: { chart: ChartType; exportState: CanonicalExportState; onClose: () => void }) {
   const images = [
     { f: "PNG", d: "고해상도 이미지 · 2×", primary: true },
     { f: "JPG", d: "웹용 · 품질 90" },
@@ -834,6 +844,7 @@ function ExportMenu({ chart, onClose }: { chart: ChartType; onClose: () => void 
     { f: "MP4", d: chart === "race" ? "1080p · 30fps" : "애니메이션 차트 전용", disabled: chart !== "race" },
     { f: "GIF", d: "준비 중", disabled: true },
   ];
+  const statusCopy = getExportStatusCopy(exportState);
   return (
     <>
       <div className="fixed inset-0 z-20" onClick={onClose} />
@@ -842,7 +853,7 @@ function ExportMenu({ chart, onClose }: { chart: ChartType; onClose: () => void 
           <div className="flex items-center justify-between">
             <div>
               <div className="text-[12.5px]" style={{ fontWeight: 500 }}>내보내기</div>
-              <div className="text-[10.5px] text-[#8A90A2] mt-0.5">프레젠테이션 16:9 · 1280 × 720</div>
+              <div className="text-[10.5px] text-[#8A90A2] mt-0.5">{statusCopy}</div>
             </div>
             <div className="flex items-center gap-0.5 bg-[#F3F4F7] rounded p-0.5">
               {["1×", "2×", "3×"].map((s, i) => <button key={s} className={`h-5 px-1.5 rounded text-[9.5px] font-mono-num ${i === 1 ? "bg-white text-[#0B0D14]" : "text-[#5B6173]"}`}>{s}</button>)}
@@ -852,7 +863,7 @@ function ExportMenu({ chart, onClose }: { chart: ChartType; onClose: () => void 
         <div className="p-2">
           <div className="text-[9.5px] uppercase tracking-wider text-[#8A90A2] px-2 pt-1 pb-1">이미지</div>
           {images.map((f) => (
-            <button key={f.f} className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-left hover:bg-[#F3F4F7]">
+            <button key={f.f} onClick={() => f.f === "SVG" ? exportState.exportSvg() : exportState.markUnsupported(f.f)} className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-left hover:bg-[#F3F4F7]">
               <span className="w-9 h-9 rounded-md bg-[#0B0D14] text-white text-[10px] flex items-center justify-center font-mono-num" style={{ fontWeight: 500 }}>{f.f}</span>
               <div className="flex-1">
                 <div className="text-[12px]" style={{ fontWeight: 500 }}>{f.f}로 내보내기</div>
@@ -863,7 +874,7 @@ function ExportMenu({ chart, onClose }: { chart: ChartType; onClose: () => void 
           ))}
           <div className="text-[9.5px] uppercase tracking-wider text-[#8A90A2] px-2 pt-3 pb-1">애니메이션</div>
           {motion.map((f) => (
-            <button key={f.f} disabled={f.disabled} className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-left ${f.disabled ? "opacity-50" : "hover:bg-[#F3F4F7]"}`}>
+            <button key={f.f} onClick={() => exportState.markUnsupported(f.f)} disabled={f.disabled} className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-left ${f.disabled ? "opacity-50" : "hover:bg-[#F3F4F7]"}`}>
               <span className="w-9 h-9 rounded-md bg-[#0B0D14] text-white text-[10px] flex items-center justify-center font-mono-num">{f.f}</span>
               <div className="flex-1">
                 <div className="text-[12px]" style={{ fontWeight: 500 }}>{f.f}로 내보내기</div>
@@ -880,6 +891,13 @@ function ExportMenu({ chart, onClose }: { chart: ChartType; onClose: () => void 
       </div>
     </>
   );
+}
+
+function getExportStatusCopy(exportState: CanonicalExportState) {
+  if (exportState.status === "exporting") return "SVG 내보내기 준비 중";
+  if (exportState.status === "success") return exportState.lastFilename ?? "SVG 내보내기 완료";
+  if (exportState.status === "error" || exportState.status === "unsupported") return exportState.errorMessage ?? "내보내기 상태를 확인하세요";
+  return "프레젠테이션 16:9 · 1280 × 720";
 }
 
 function UploadModal({ datasetState, onClose, onGoRecommend }: { datasetState: CanonicalDatasetState; onClose: () => void; onGoRecommend: () => void }) {
