@@ -12,6 +12,7 @@ import {
   type CanonicalEditorTab as EditorTab,
 } from "./editor-adapters";
 import { useCanonicalDataEditorState } from "./useCanonicalDataEditorState";
+import { useCanonicalEditorDraftState } from "./useCanonicalEditorDraftState";
 import { useCanonicalEditorViewState } from "./useCanonicalEditorViewState";
 import { ChevronLeft, Save, Play, Pause, Undo2, Redo2, Sparkles, ChevronDown, Share2, Plus, X, Type, Table, Layers, Palette, Axis3D, Grid3x3, Tag as TagIcon, Layout, Download, Eye, Check, ArrowRight, LayoutGrid, Search, Filter, AlertTriangle, RefreshCw, Wand2 } from "lucide-react";
 
@@ -35,6 +36,11 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
   const {
     chart,
     setChart,
+    title,
+    subtitle,
+    caption,
+  } = useCanonicalEditorDraftState();
+  const {
     exportOpen,
     setExportOpen,
     recOpen,
@@ -218,6 +224,9 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
           <div className="flex-1 min-h-0 overflow-auto p-6 flex items-start justify-center">
             <CanvasCard
               chart={chart}
+              title={title}
+              subtitle={subtitle}
+              caption={caption}
               palette={colorMode === "single" ? [singleColor, highlight, singleColor, highlight, singleColor] : PALETTES[palette].colors}
               dark={darkCanvas} showKPI={showKPI} year={raceYear}
             />
@@ -257,6 +266,9 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
         <aside className="w-[332px] shrink-0 bg-white border-l border-black/[0.06] overflow-y-auto">
           <Inspector
             chart={chart}
+            title={title}
+            subtitle={subtitle}
+            caption={caption}
             colorMode={colorMode} setColorMode={setColorMode}
             palette={palette} setPalette={setPalette}
             singleColor={singleColor} setSingleColor={setSingleColor}
@@ -276,12 +288,12 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
 }
 
 /* ---------- Canvas ---------- */
-function CanvasCard({ chart, palette, dark, showKPI, year }: { chart: ChartType; palette: string[]; dark: boolean; showKPI: boolean; year: number }) {
+function CanvasCard({ chart, title, subtitle, caption, palette, dark, showKPI, year }: { chart: ChartType; title: string; subtitle: string; caption: string; palette: string[]; dark: boolean; showKPI: boolean; year: number }) {
   const titles = {
-    bar: { t: "지역별 월평균 매출 지수", s: "단위: 지수(100 기준) · 전년 동기 비교 · n=412", kpi: "전년 대비 +12.4%" },
-    line: { t: "월별 활성 사용자 추이", s: "단위: 명 · 3개월 롤링 평균 · 2026 Q1", kpi: "피크 10월 · +38%" },
-    donut: { t: "기기별 트래픽 점유율", s: "단위: % · 2026년 1분기 평균", kpi: "모바일 62.4%" },
-    race: { t: "글로벌 기업 시가총액 Top 10", s: "단위: USD Billion · 2019 → 2025", kpi: `${year}년 기준` },
+    bar: { kpi: "전년 대비 +12.4%" },
+    line: { kpi: "피크 10월 · +38%" },
+    donut: { kpi: "모바일 62.4%" },
+    race: { kpi: `${year}년 기준` },
   }[chart];
 
   const bg = dark ? "#0B0D14" : "#fff";
@@ -294,8 +306,8 @@ function CanvasCard({ chart, palette, dark, showKPI, year }: { chart: ChartType;
         <div className="flex items-start justify-between">
           <div className="min-w-0">
             <div className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: sub }}>MAC Research · 2026년 1분기</div>
-            <div className="mt-1.5" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.2, color: fg }}>{titles.t}</div>
-            <div className="mt-1 text-[11px]" style={{ color: sub }}>{titles.s}</div>
+            <div className="mt-1.5" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.2, color: fg }}>{title}</div>
+            <div className="mt-1 text-[11px]" style={{ color: sub }}>{subtitle}</div>
           </div>
           {showKPI && (
             <div className="text-right shrink-0 pl-4">
@@ -311,7 +323,7 @@ function CanvasCard({ chart, palette, dark, showKPI, year }: { chart: ChartType;
           {chart === "race" && <RacingBar className="w-full" palette={palette} year={year} />}
         </div>
         <div className="mt-4 pt-3 border-t flex items-center justify-between text-[10px]" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)", color: sub }}>
-          <span>출처 · MAC Research, KOSIS</span>
+          <span>출처 · {caption}</span>
           <span className="font-mono-num">made with MAC · 2026-04-24</span>
         </div>
       </div>
@@ -322,6 +334,9 @@ function CanvasCard({ chart, palette, dark, showKPI, year }: { chart: ChartType;
 /* ---------- Inspector ---------- */
 type InspectorProps = {
   chart: ChartType;
+  title: string;
+  subtitle: string;
+  caption: string;
   colorMode: ColorMode; setColorMode: (c: ColorMode) => void;
   palette: PaletteKey; setPalette: (p: PaletteKey) => void;
   singleColor: string; setSingleColor: (v: string) => void;
@@ -352,9 +367,9 @@ function Inspector(p: InspectorProps) {
       </div>
 
       <Acc icon={<Type size={12} />} title="제목 · 설명" open={open.title} onToggle={() => toggle("title")}>
-        <Field label="제목" value="지역별 월평균 매출 지수" />
-        <Field label="부제" value="단위: 지수(100 기준) · n=412" />
-        <Field label="출처" value="MAC Research · KOSIS" mono />
+        <Field label="제목" value={p.title} />
+        <Field label="부제" value={p.subtitle.replace(" · 전년 동기 비교", "")} />
+        <Field label="출처" value={p.caption.replace(", ", " · ")} mono />
         <Toggle label="핵심 지표 표시" on={p.showKPI} onChange={() => p.setShowKPI(!p.showKPI)} />
       </Acc>
 

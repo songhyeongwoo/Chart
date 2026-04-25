@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import type { PaletteKey } from "./Charts";
-import type { CanonicalChartType, CanonicalColorMode } from "./editor-adapters";
+import type { CanonicalColorMode } from "./editor-adapters";
 
 export function useCanonicalEditorViewState() {
-  const [chart, setChart] = useState<CanonicalChartType>("bar");
   const [exportOpen, setExportOpen] = useState(false);
   const [recOpen, setRecOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -21,8 +20,6 @@ export function useCanonicalEditorViewState() {
   const [racePlaying, setRacePlaying] = useState(true);
 
   return {
-    chart,
-    setChart,
     exportOpen,
     setExportOpen,
     recOpen,

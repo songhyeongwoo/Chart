@@ -368,9 +368,18 @@ Goal:
 
 Exit criteria:
 
-- Chart type changes use existing Chart handler logic.
+- Chart type changes pass through a draft adapter that can later call existing Chart handler logic.
 - Text changes update draft state.
 - Static canonical chart fallback remains available.
+
+Completion note:
+
+- Added a canonical-only draft hook for the Phase 2 surface: chart type, title, subtitle, and caption.
+- Chart type changes now flow through the canonical draft hook and the chart type adapter, while still rendering the same canonical chart primitives and mock data.
+- The draft hook keeps a future-compatible chart type shape so canonical `race` can later map to existing Chart `racing-bar` without changing the visual component.
+- Canvas title/subtitle/caption display and inspector title/source display now read from canonical draft state.
+- Existing Chart renderer, `editor-workspace-client.tsx` handlers, field mapping, upload parsing, save/reset, backend, and export behavior are still not connected.
+- Phase 3 can now move into field mapping and data table state while reusing this adapter boundary.
 
 ### Phase 3: Field mapping and data table state
 
