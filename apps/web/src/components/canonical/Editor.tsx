@@ -11,9 +11,9 @@ import {
   type CanonicalColorMode as ColorMode,
   type CanonicalEditorTab as EditorTab,
 } from "./editor-adapters";
-import { useCanonicalDataEditorState } from "./useCanonicalDataEditorState";
 import { useCanonicalEditorDraftState } from "./useCanonicalEditorDraftState";
 import { useCanonicalEditorViewState } from "./useCanonicalEditorViewState";
+import { useCanonicalFieldMappingState, type CanonicalFieldMappingState } from "./useCanonicalFieldMappingState";
 import { ChevronLeft, Save, Play, Pause, Undo2, Redo2, Sparkles, ChevronDown, Share2, Plus, X, Type, Table, Layers, Palette, Axis3D, Grid3x3, Tag as TagIcon, Layout, Download, Eye, Check, ArrowRight, LayoutGrid, Search, Filter, AlertTriangle, RefreshCw, Wand2 } from "lucide-react";
 
 const PRIMARY_CHARTS: { k: ChartType; l: string }[] = [
@@ -40,6 +40,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
     subtitle,
     caption,
   } = useCanonicalEditorDraftState();
+  const fieldMapping = useCanonicalFieldMappingState();
   const {
     exportOpen,
     setExportOpen,
@@ -182,7 +183,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
           </div>
         </aside>
 
-        {tab === "data" ? <DataEditor onApply={() => setTab("edit")} /> : <>
+        {tab === "data" ? <DataEditor onApply={() => setTab("edit")} fieldMapping={fieldMapping} /> : <>
         {/* Canvas */}
         <section className="flex-1 min-w-0 relative overflow-hidden flex flex-col" style={{ backgroundColor: "#F2F2EE" }}>
           {/* Sub toolbar */}
@@ -269,6 +270,7 @@ export function Editor({ onBack, tab = "edit", onTabChange, projectId }: { onBac
             title={title}
             subtitle={subtitle}
             caption={caption}
+            fieldMapping={fieldMapping}
             colorMode={colorMode} setColorMode={setColorMode}
             palette={palette} setPalette={setPalette}
             singleColor={singleColor} setSingleColor={setSingleColor}
@@ -337,6 +339,7 @@ type InspectorProps = {
   title: string;
   subtitle: string;
   caption: string;
+  fieldMapping: CanonicalFieldMappingState;
   colorMode: ColorMode; setColorMode: (c: ColorMode) => void;
   palette: PaletteKey; setPalette: (p: PaletteKey) => void;
   singleColor: string; setSingleColor: (v: string) => void;
@@ -374,12 +377,12 @@ function Inspector(p: InspectorProps) {
       </Acc>
 
       <Acc icon={<Layers size={12} />} title="데이터 연결" open={open.data} onToggle={() => toggle("data")}>
-        <Mapping label="X축" field="지역" type="범주" count="8개" />
-        <Mapping label="Y축" field="매출" type="숫자" count="0–100" />
-        {p.chart === "bar" && <Mapping label="비교" field="전년 매출" type="숫자" />}
-        {p.chart === "line" && <Mapping label="시리즈" field="카테고리" type="범주" count="3개" />}
+        <Mapping label="X축" field={p.fieldMapping.mappingColumns.x?.n ?? "지역"} type={p.fieldMapping.mappingColumns.x?.t ?? "범주"} count="8개" />
+        <Mapping label="Y축" field={p.fieldMapping.mappingColumns.y?.n ?? "매출"} type={p.fieldMapping.mappingColumns.y?.t ?? "숫자"} count="0–100" />
+        {p.chart === "bar" && <Mapping label="비교" field={p.fieldMapping.mappingColumns.comparison?.n ?? "전년 매출"} type={p.fieldMapping.mappingColumns.comparison?.t ?? "숫자"} />}
+        {p.chart === "line" && <Mapping label="시리즈" field={p.fieldMapping.mappingColumns.color?.n ?? "카테고리"} type={p.fieldMapping.mappingColumns.color?.t ?? "범주"} count="3개" />}
         {p.chart === "race" && <Mapping label="시간 축" field="연도" type="날짜" count="2019–2025" />}
-        <Mapping label="색상" field="카테고리" type="범주" />
+        <Mapping label="색상" field={p.fieldMapping.mappingColumns.color?.n ?? "카테고리"} type={p.fieldMapping.mappingColumns.color?.t ?? "범주"} />
         <button className="mt-2 w-full h-7 rounded-md border border-dashed border-black/15 text-[10.5px] text-[#5B6173] hover:bg-black/[0.03]">+ 열 추가</button>
       </Acc>
 
@@ -919,38 +922,23 @@ function RecommendDrawer({ onClose, onPick }: { onClose: () => void; onPick: (c:
 }
 
 /* ---------- Data Editor (데이터 수정) ---------- */
-function DataEditor({ onApply }: { onApply: () => void }) {
-  const columns = [
-    { k: "A", n: "지역",      t: "범주", c: "#1F3FFF", role: "X축",    issues: 0 },
-    { k: "B", n: "월",        t: "날짜", c: "#E26A2C", role: "시간",   issues: 0 },
-    { k: "C", n: "매출",      t: "숫자", c: "#25A18E", role: "Y축",    issues: 0 },
-    { k: "D", n: "전년 매출", t: "숫자", c: "#25A18E", role: "비교값", issues: 2 },
-    { k: "E", n: "성장률",    t: "숫자", c: "#25A18E", role: "—",      issues: 0 },
-    { k: "F", n: "카테고리",  t: "범주", c: "#1F3FFF", role: "색상",   issues: 0 },
-    { k: "G", n: "브랜드",    t: "범주", c: "#1F3FFF", role: "—",      issues: 1 },
-  ];
-  const rows = [
-    { 지역: "서울",   월: "2026-01", 매출: 1284, 전년: 1086, 성장률: "+18.2%", 카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "경기",   월: "2026-01", 매출: 986,  전년: 808,  성장률: "+22.0%", 카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "부산",   월: "2026-01", 매출: 642,  전년: 512,  성장률: "+25.4%", 카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "인천",   월: "2026-01", 매출: 521,  전년: 462,  성장률: "+12.8%", 카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "대구",   월: "2026-01", 매출: 418,  전년: null, 성장률: "—",       카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "대전",   월: "2026-01", 매출: 324,  전년: 298,  성장률: "+8.7%",   카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "광주",   월: "2026-01", 매출: 286,  전년: 264,  성장률: "+8.3%",   카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "울산",   월: "2026-01", 매출: 192,  전년: 174,  성장률: "+10.3%",  카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "세종",   월: "2026-01", 매출: 78,   전년: 64,   성장률: "+21.9%",  카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "강원",   월: "2026-01", 매출: 142,  전년: 118,  성장률: "+20.3%",  카테고리: "리테일",  브랜드: "" },
-    { 지역: "충북",   월: "2026-01", 매출: 168,  전년: 144,  성장률: "+16.7%",  카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "충남",   월: "2026-01", 매출: 224,  전년: 198,  성장률: "+13.1%",  카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "전북",   월: "2026-01", 매출: 158,  전년: null, 성장률: "—",       카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "전남",   월: "2026-01", 매출: 184,  전년: 162,  성장률: "+13.6%",  카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "경북",   월: "2026-01", 매출: 246,  전년: 218,  성장률: "+12.8%",  카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "경남",   월: "2026-01", 매출: 312,  전년: 274,  성장률: "+13.9%",  카테고리: "리테일",  브랜드: "MAC" },
-    { 지역: "제주",   월: "2026-01", 매출: 124,  전년: 108,  성장률: "+14.8%",  카테고리: "리테일",  브랜드: "MAC" },
-  ];
-  const { selectedCol, setSelectedCol, selectedCell, setSelectedCell, encoding, setEncoding } = useCanonicalDataEditorState();
-  const colHeaders = ["지역", "월", "매출", "전년", "성장률", "카테고리", "브랜드"];
-  const colNameMap: Record<string, string> = { 지역: "지역", 월: "월", 매출: "매출", 전년: "전년 매출", 성장률: "성장률", 카테고리: "카테고리", 브랜드: "브랜드" };
+function DataEditor({ onApply, fieldMapping }: { onApply: () => void; fieldMapping: CanonicalFieldMappingState }) {
+  const {
+    columns,
+    rows,
+    columnHeaders: colHeaders,
+    columnNameByDataKey: colNameMap,
+    selectedCol,
+    setSelectedCol,
+    selectedCell,
+    setSelectedCell,
+    encoding,
+    setEncoding,
+    selectedColumn,
+    missingValueCount,
+    issueCount,
+    mappingColumns,
+  } = fieldMapping;
 
   return (
     <>
@@ -974,9 +962,9 @@ function DataEditor({ onApply }: { onApply: () => void }) {
           <button className="h-7 px-2.5 rounded-md text-[10.5px] text-[#3D4253] hover:bg-black/[0.04] inline-flex items-center gap-1.5"><Filter size={11} /> 필터</button>
           <div className="w-px h-5 bg-black/10" />
           <div className="flex items-center gap-1 text-[10.5px] text-[#5B6173]">
-            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#65C466]" /> 정상 409</span>
-            <span className="inline-flex items-center gap-1 ml-2"><span className="w-1.5 h-1.5 rounded-full bg-[#F2B705]" /> 결측 2</span>
-            <span className="inline-flex items-center gap-1 ml-2"><span className="w-1.5 h-1.5 rounded-full bg-[#FF6A3D]" /> 의심 1</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#65C466]" /> 정상 {412 - missingValueCount - (issueCount - missingValueCount)}</span>
+            <span className="inline-flex items-center gap-1 ml-2"><span className="w-1.5 h-1.5 rounded-full bg-[#F2B705]" /> 결측 {missingValueCount}</span>
+            <span className="inline-flex items-center gap-1 ml-2"><span className="w-1.5 h-1.5 rounded-full bg-[#FF6A3D]" /> 의심 {issueCount - missingValueCount}</span>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <button className="h-7 px-2.5 rounded-md text-[10.5px] text-[#3D4253] hover:bg-black/[0.04] inline-flex items-center gap-1.5"><RefreshCw size={11} /> 데이터 다시 불러오기</button>
@@ -1061,7 +1049,7 @@ function DataEditor({ onApply }: { onApply: () => void }) {
             </>
           )}
           <span className="w-px h-3 bg-black/10" />
-          <span className="text-[#F2B705]">⚠ 결측치 2건 · 의심 1건</span>
+          <span className="text-[#F2B705]">⚠ 결측치 {missingValueCount}건 · 의심 {issueCount - missingValueCount}건</span>
           <span className="ml-auto font-mono-num">{encoding} · 마지막 수정 14:18</span>
         </div>
       </section>
@@ -1075,7 +1063,7 @@ function DataEditor({ onApply }: { onApply: () => void }) {
             {[
               { l: "행", v: "412" },
               { l: "열", v: "7" },
-              { l: "결측", v: "2" },
+              { l: "결측", v: String(missingValueCount) },
             ].map((s) => (
               <div key={s.l} className="rounded-md bg-[#F6F7F9] px-2 py-1.5">
                 <div className="text-[9px] text-[#8A90A2]">{s.l}</div>
@@ -1091,30 +1079,30 @@ function DataEditor({ onApply }: { onApply: () => void }) {
               <span className="w-1 h-5 rounded-full bg-[#25A18E]" />
               <div className="flex-1 min-w-0">
                 <div className="text-[12px]" style={{ fontWeight: 500 }}>{selectedCol}</div>
-                <div className="text-[10px] text-[#8A90A2] mt-0.5">숫자 · 십억원 · 0–1,284</div>
+                <div className="text-[10px] text-[#8A90A2] mt-0.5">{selectedColumn.t} · {selectedColumn.unit ?? "값"} · {selectedColumn.range ?? "분류"}</div>
               </div>
               <button className="text-[10px] text-[#5B6173] hover:text-[#0B0D14]">이름 변경</button>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-1.5 text-[10.5px]">
-              <DStat l="평균" v="412" />
-              <DStat l="중앙값" v="324" />
-              <DStat l="최소 / 최대" v="78 / 1,284" />
-              <DStat l="결측" v="0" />
+              <DStat l="평균" v={selectedColumn.mean ?? "—"} />
+              <DStat l="중앙값" v={selectedColumn.median ?? "—"} />
+              <DStat l="최소 / 최대" v={selectedColumn.minMax ?? "—"} />
+              <DStat l="결측" v={String(selectedColumn.missing)} />
             </div>
           </div>
         </DAcc>
 
         <DAcc title="열 유형">
-          <DRow label="유형" value="숫자" />
-          <DRow label="단위" value="십억원" />
-          <DRow label="형식" value="천 단위 콤마" />
+          <DRow label="유형" value={selectedColumn.t} />
+          <DRow label="단위" value={selectedColumn.unit ?? "없음"} />
+          <DRow label="형식" value={selectedColumn.format ?? "텍스트"} />
         </DAcc>
 
         <DAcc title="차트 연결">
-          <DMap label="X축"    field="지역" type="범주" />
-          <DMap label="Y축"    field="매출" type="숫자" highlight />
-          <DMap label="비교값" field="전년 매출" type="숫자" />
-          <DMap label="색상"   field="카테고리" type="범주" />
+          <DMap label="X축"    field={mappingColumns.x?.n ?? "지역"} type={mappingColumns.x?.t ?? "범주"} />
+          <DMap label="Y축"    field={mappingColumns.y?.n ?? "매출"} type={mappingColumns.y?.t ?? "숫자"} highlight />
+          <DMap label="비교값" field={mappingColumns.comparison?.n ?? "전년 매출"} type={mappingColumns.comparison?.t ?? "숫자"} />
+          <DMap label="색상"   field={mappingColumns.color?.n ?? "카테고리"} type={mappingColumns.color?.t ?? "범주"} />
           <button className="mt-2 w-full h-7 rounded-md border border-dashed border-black/15 text-[10.5px] text-[#5B6173] hover:bg-black/[0.03]">+ 매핑 추가</button>
         </DAcc>
 

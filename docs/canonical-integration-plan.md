@@ -391,8 +391,17 @@ Goal:
 
 Exit criteria:
 
-- Field binding updates use existing conflict/default logic.
+- Field binding state is adapter-ready for existing conflict/default logic.
 - Data tab remains visually canonical.
+
+Completion note:
+
+- Added canonical field/data adapters for mock columns, rows, inferred column type, missing/issue counts, and minimal field mapping state.
+- Added a canonical field mapping hook that exposes x, y, comparison, color, label, selected column, selected cell, encoding, and future-compatible binding names.
+- DataEditor now reads table rows, column metadata, selected cell/column, encoding, and chart connection labels from the canonical adapter state.
+- The editor inspector's existing data connection display now reads from the same canonical field mapping state.
+- Existing Chart `handleBindingChange`, field recommendation helpers, renderer, upload parsing, save/reset, backend, and export behavior are still not connected.
+- Phase 4 can now move into label, axis, legend, and layout controls while keeping this field mapping adapter boundary.
 
 ### Phase 4: Label, axis, legend, and layout controls
 
