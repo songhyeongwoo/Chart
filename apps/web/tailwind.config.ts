@@ -58,6 +58,10 @@ const config: Config = {
         panel: "var(--shadow-panel)",
         inset: "var(--shadow-inset)"
       },
+      opacity: {
+        8: "0.08",
+        12: "0.12"
+      },
       transitionTimingFunction: {
         refined: "var(--motion-ease)"
       },
