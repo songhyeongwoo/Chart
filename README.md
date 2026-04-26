@@ -1,4 +1,4 @@
-# MAC
+# MAC(Make a Chart)
 
 MAC is the product foundation repository for a no-code data visualization web app inspired by the editing flow and output quality of tools like Flourish.
 
